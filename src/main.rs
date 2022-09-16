@@ -1,45 +1,73 @@
-use show_image::{ImageView, ImageInfo, create_window, event};
-use image::{open};
 use image::io::Reader as IR;
+
+use sdl2::event::Event;
+use sdl2::keyboard::Keycode;
+use sdl2::pixels::PixelFormatEnum;
+use sdl2::rect::Rect;
+
 use std::time::Instant;
 
-#[show_image::main]
-fn main(){
+pub fn main() -> Result<(), String> {
     let start = Instant::now();
     let ta = start.elapsed().as_millis();
 
-    let pxs = IR::open("/home/cody/img/collections/cltracer/q-bright-sky-rough-copper.png")
+    let img = IR::open("/home/cody/img/collections/janitor-pics/14_cracked_stones.png")
         .expect("dsnt").decode().expect("hoed");
+    let pxs = img.as_rgba8().unwrap();
+    //let pxs = img.to_rgba8();
+    // let pxs = IR::open("/home/cody/img/collections/cltracer/q-bright-sky-rough-copper.png")
+    //     .expect("dsnt").decode().expect("hoed");
+    // let pxs = IR::open("/home/cody/img/collections/cltracer/t-microfacets-dielectrics-conductors.png")
+    //     .expect("dsnt").decode().expect("hoed");
 
-    println!("{:?}", start.elapsed().as_millis() - ta);
+    println!("image: {:?}ms", start.elapsed().as_millis() - ta);
 
-    let window = create_window("image", Default::default()).expect("oof");
-    window.set_image("image-001", pxs).expect("auw");
+    let sdl_context = sdl2::init()?;
+    let video_subsystem = sdl_context.video()?;
 
-    println!("{:?}", start.elapsed().as_millis() - ta);
+    let window = video_subsystem
+        .window("rust-sdl2 demo: Video", 500, 500)
+        .resizable()
+        .opengl()
+        .build()
+        .map_err(|e| e.to_string())?;
 
-    for event in window.event_channel().map_err(|e| e.to_string()).expect("rip") {
-        if let event::WindowEvent::KeyboardInput(event) = event {
-            if !event.is_synthetic
-                && event.input.key_code == Some(event::VirtualKeyCode::Escape)
-                && event.input.state.is_pressed() {
-                println!("Escape pressed!");
-                break;
-            }
-            if !event.is_synthetic
-                && event.input.key_code == Some(event::VirtualKeyCode::A)
-                && event.input.state.is_pressed() {
-                let pxs = open("/home/cody/img/collections/cltracer/t-microfacets-dielectrics-conductors.png")
-                    .unwrap();
-                window.set_image("image-001", pxs).expect("auw");
-            }
-            if !event.is_synthetic
-                && event.input.key_code == Some(event::VirtualKeyCode::E)
-                && event.input.state.is_pressed() {
-                let pxs = open("/home/cody/img/collections/cltracer/q-bright-sky-rough-copper.png")
-                    .unwrap();
-                window.set_image("image-001", pxs).expect("auw");
+    let mut canvas = window.into_canvas().build().map_err(|e| e.to_string())?;
+
+    println!("window: {:?}ms", start.elapsed().as_millis() - ta);
+
+    let texture_creator = canvas.texture_creator();
+    let mut texture = texture_creator
+        .create_texture_streaming(PixelFormatEnum::RGBA32, img.width(), img.height())
+        .map_err(|e| e.to_string())?;
+    texture.update(None, pxs, 4 * img.width() as usize).unwrap();
+
+    println!("texture: {:?}ms", start.elapsed().as_millis() - ta);
+
+    canvas.copy(&texture, None, Some(Rect::new(0, 0, 512, 256)))?;
+    canvas.present();
+
+    println!("present: {:?}ms", start.elapsed().as_millis() - ta);
+
+    let mut event_pump = sdl_context.event_pump()?;
+
+    'running: loop {
+        for event in event_pump.poll_iter() {
+            match event {
+                Event::Quit { .. }
+                | Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => break 'running,
+                Event::KeyDown { .. } => {
+                    println!("yeet");
+                    canvas.copy(&texture, None, Some(Rect::new(100, 100, 256, 256)))?;
+                },
+                _ => {}
             }
         }
+        // The rest of the game loop goes here...
     }
+
+    Ok(())
 }
