@@ -1,22 +1,26 @@
+mod window;
+mod timer;
+
+use crate::{
+    window::EIWindow,
+    timer::Timer,
+};
+
+// use mlua::prelude::*;
 use image::io::Reader as IR;
 
 use sdl2::{
+    pixels::PixelFormatEnum,
     event::{ Event, WindowEvent },
     keyboard::Keycode,
-    pixels::PixelFormatEnum,
-    rect::Rect,
     mouse::MouseButton,
+    rect::Rect,
 };
 
-use std::time::Instant;
-
 pub fn main() -> Result<(), String> {
-    // let img = IR::open("/home/cody/img/collections/cltracer/q-bright-sky-rough-copper.png")
-    //     .expect("dsnt").decode().expect("hoed");
-    // let img = IR::open("/home/cody/img/collections/cltracer/t-microfacets-dielectrics-conductors.png")
-    //     .expect("dsnt").decode().expect("hoed");
-
     let mut timer = Timer::new();
+    let mut window = EIWindow::create(&timer)?;
+    // texture: Texture<'t>,
 
     let img = IR::open("/home/cody/img/collections/janitor-pics/14_cracked_stones.png")
         .map_err(|e| e.to_string())?
@@ -29,32 +33,20 @@ pub fn main() -> Result<(), String> {
 
     println!("Image: {:?}ms", timer.elapsed());
 
-    let sdl_context = sdl2::init()?;
-    let video_subsystem = sdl_context.video()?;
-
-    let window = video_subsystem
-        .window("editimg", 512, 512)
-        .resizable()
-        .opengl()
-        .build()
-        .map_err(|e| e.to_string())?;
-
-    let mut canvas = window.into_canvas().build().map_err(|e| e.to_string())?;
-
-    println!("Window: {:?}ms", timer.elapsed());
-
-    let texture_creator = canvas.texture_creator();
-    let mut texture = texture_creator
+    let mut texture = window.texture_creator
         .create_texture_streaming(PixelFormatEnum::RGBA32, imgw, imgh)
         .map_err(|e| e.to_string())?;
     texture.update(None, &img, 4 * imgw as usize).map_err(|e| e.to_string())?;
 
     println!("Texture: {:?}ms", timer.elapsed());
 
-    let mut event_pump = sdl_context.event_pump()?;
+    // let img = IR::open("/home/cody/img/collections/cltracer/q-bright-sky-rough-copper.png")
+    //     .expect("dsnt").decode().expect("hoed");
+    // let img = IR::open("/home/cody/img/collections/cltracer/t-microfacets-dielectrics-conductors.png")
+    //     .expect("dsnt").decode().expect("hoed");
 
     'running: loop {
-        for event in event_pump.poll_iter() {
+        for event in window.event_pump.poll_iter() {
             match event {
                 Event::Quit { .. }
                 | Event::KeyDown {
@@ -64,12 +56,12 @@ pub fn main() -> Result<(), String> {
                 Event::Window{ win_event: WindowEvent::Resized(winw, winh), .. } => {
                     println!("Resized: ({}, {})", winw, winh);
                     timer.checkpoint();
-                    canvas.clear();
+                    window.canvas.clear();
                     let winw = winw.max(0).unsigned_abs();
                     let winh = winh.max(0).unsigned_abs();
                     let (x, y, w, h) = resize_dims(imgw, imgh, winw, winh);
-                    canvas.copy(&texture, None, Some(Rect::new(x, y, w, h)))?;
-                    canvas.present();
+                    window.canvas.copy(&texture, None, Some(Rect::new(x, y, w, h)))?;
+                    window.canvas.present();
                     println!("Resizing: {:?}ms", timer.elapsed());
                 },
                 Event::KeyDown { .. } => {
@@ -84,27 +76,6 @@ pub fn main() -> Result<(), String> {
     }
 
     Ok(())
-}
-
-struct Timer{
-    time: Instant,
-    prev: u128,
-}
-
-impl Timer{
-    fn new() -> Self{
-        let time = Instant::now();
-        let prev = time.elapsed().as_millis();
-        Self{ time, prev }
-    }
-
-    fn elapsed(&self) -> u128{
-        self.time.elapsed().as_millis() - self.prev
-    }
-
-    fn checkpoint(&mut self){
-        self.prev = self.time.elapsed().as_millis();
-    }
 }
 
 fn resize_dims(imgw: u32, imgh: u32, winw: u32, winh: u32) -> (i32, i32, u32, u32){
