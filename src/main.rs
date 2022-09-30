@@ -7,46 +7,21 @@ use crate::{
 };
 
 // use mlua::prelude::*;
-use image::io::Reader as IR;
 
 use sdl2::{
-    pixels::PixelFormatEnum,
     event::{ Event, WindowEvent },
     keyboard::Keycode,
     mouse::MouseButton,
-    rect::Rect,
 };
 
 pub fn main() -> Result<(), String> {
     let mut timer = Timer::new();
-    let mut window = EIWindow::create(&timer)?;
-    // texture: Texture<'t>,
-
-    let img = IR::open("/home/cody/img/collections/janitor-pics/14_cracked_stones.png")
-        .map_err(|e| e.to_string())?
-        .decode()
-        .map_err(|e| e.to_string())?
-        .into_rgba8();
-
-    let imgw = img.width();
-    let imgh = img.height();
-
-    println!("Image: {:?}ms", timer.elapsed());
-
-    let mut texture = window.texture_creator
-        .create_texture_streaming(PixelFormatEnum::RGBA32, imgw, imgh)
-        .map_err(|e| e.to_string())?;
-    texture.update(None, &img, 4 * imgw as usize).map_err(|e| e.to_string())?;
-
-    println!("Texture: {:?}ms", timer.elapsed());
-
-    // let img = IR::open("/home/cody/img/collections/cltracer/q-bright-sky-rough-copper.png")
-    //     .expect("dsnt").decode().expect("hoed");
-    // let img = IR::open("/home/cody/img/collections/cltracer/t-microfacets-dielectrics-conductors.png")
-    //     .expect("dsnt").decode().expect("hoed");
+    let (mut window, mut event_pump) = EIWindow::create(&timer)?;
+    let file = "/home/cody/img/collections/janitor-pics/14_cracked_stones.png";
+    window.set_texture(file, &timer)?;
 
     'running: loop {
-        for event in window.event_pump.poll_iter() {
+        for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. }
                 | Event::KeyDown {
@@ -54,21 +29,18 @@ pub fn main() -> Result<(), String> {
                     ..
                 } => break 'running,
                 Event::Window{ win_event: WindowEvent::Resized(winw, winh), .. } => {
-                    println!("Resized: ({}, {})", winw, winh);
-                    timer.checkpoint();
-                    window.canvas.clear();
+                    println!("Resized: ({winw}, {winh})");
                     let winw = winw.max(0).unsigned_abs();
                     let winh = winh.max(0).unsigned_abs();
-                    let (x, y, w, h) = resize_dims(imgw, imgh, winw, winh);
-                    window.canvas.copy(&texture, None, Some(Rect::new(x, y, w, h)))?;
-                    window.canvas.present();
+                    timer.checkpoint();
+                    window.redraw(winw, winh)?;
                     println!("Resizing: {:?}ms", timer.elapsed());
                 },
                 Event::KeyDown { .. } => {
                     println!("yeet");
                 },
                 Event::MouseButtonDown{ mouse_btn: MouseButton::Left, clicks: 1, x, y, .. } => {
-                    println!("Click: ({}, {})", x, y);
+                    println!("Click: ({x}, {y})");
                 },
                 _ => {}
             }
@@ -78,37 +50,3 @@ pub fn main() -> Result<(), String> {
     Ok(())
 }
 
-fn resize_dims(imgw: u32, imgh: u32, winw: u32, winh: u32) -> (i32, i32, u32, u32){
-    let wfac = winw as f32 / imgw as f32;
-    let hfac = winh as f32 / imgh as f32;
-    let fac = wfac.min(hfac);
-    let w = (imgw as f32 * fac) as u32;
-    let h = (imgh as f32 * fac) as u32;
-    let x = if w < winw - 2 { (winw - w) / 2 } else { 0 } as i32;
-    let y = if h < winh - 2 { (winh - h) / 2 } else { 0 } as i32;
-    (x, y, w, h)
-}
-
-#[cfg(test)]
-mod tests{
-
-    use super::*;
-
-    #[test]
-    fn test_resize_dims(){
-        let (x, y, w, h) = resize_dims(100, 100, 100, 100);
-        assert_eq!((x, y, w, h), (0, 0, 100, 100));
-
-        let (x, y, w, h) = resize_dims(50, 50, 100, 100);
-        assert_eq!((x, y, w, h), (0, 0, 100, 100));
-
-        let (x, y, w, h) = resize_dims(200, 200, 100, 100);
-        assert_eq!((x, y, w, h), (0, 0, 100, 100));
-
-        let (x, y, w, h) = resize_dims(100, 50, 100, 100);
-        assert_eq!((x, y, w, h), (0, 25, 100, 50));
-
-        let (x, y, w, h) = resize_dims(50, 100, 100, 100);
-        assert_eq!((x, y, w, h), (25, 0, 50, 100));
-    }
-}
