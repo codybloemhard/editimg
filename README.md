@@ -19,8 +19,8 @@ Editimg turns into a TUI in the terminal you launched it and it creates a GUI wi
 This window expects to be resized by your TWM.
 Simple minimal inputs can be given in the GUI and more complex ones in the TUI.
 The GUI shows the (intermediate) results.
-The TUI should be a REPL and take in lua.
-All functionality should be callable from lua.
+The TUI should be a REPL and take in Rhai.
+All functionality should be callable from Rhai.
 Scripts can be build to automate editing images.
 Scripts can be written to design workflows that can be launced.
 
@@ -41,7 +41,7 @@ Scripts can be written to design workflows that can be launced.
     - [ ] Move around
     - [ ] Zoom
 - Scripting
-  - [ ] Lua embedding
+  - [ ] Rhai embedding
   - [ ] Wizards to take input
   - Functions
     - [ ] Export
