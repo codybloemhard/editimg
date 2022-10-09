@@ -7,6 +7,7 @@ pub enum HostMsg{
     Kill,
     GetMouseClick,
     DebugI64(i64),
+    DrawRect(i64, i64, i64, i64),
 }
 
 #[derive(Debug, Clone)]
@@ -57,6 +58,7 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
     let send_err = "Editimg: rhai thread could not send to host.";
     let th0 = to_host.clone();
     let th1 = to_host.clone();
+    let th2 = to_host.clone();
 
     engine
         .register_fn("kill", move || {
@@ -64,6 +66,9 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
         })
         .register_fn("put", move |v: i64| {
             th0.send(HostMsg::DebugI64(v)).expect(send_err);
+        })
+        .register_fn("draw_rect", move |px: i64, py: i64, qx: i64, qy: i64| {
+            th2.send(HostMsg::DrawRect(px, py, qx, qy)).expect(send_err);
         })
         .register_fn("get_mouse_click", move || -> MouseClick {
             th1.send(HostMsg::GetMouseClick).expect(send_err);

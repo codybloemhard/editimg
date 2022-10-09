@@ -29,8 +29,7 @@ pub fn main() -> Result<(), String> {
                 for _i in 0..2{
                     let mc = get_mouse_click();
                     print(`  Script Read: ${mc.x}, ${mc.y}`);
-                    put(mc.x);
-                    put(mc.y);
+                    draw_rect(mc.x, mc.y, mc.x + 100, mc.y + 100);
                 }
                 kill();
             "#,
@@ -45,15 +44,23 @@ pub fn main() -> Result<(), String> {
     window.set_texture(file, &timer)?;
 
     let mut send_next_click = false;
+    let mut rects = Vec::new();
 
     'running: loop {
         for rhai_call in from_rhai.try_iter(){
             use HostMsg::*;
             match rhai_call{
                 Kill => break 'running,
+                DrawRect(px, py, qx, qy) => rects.push((px, py, qx, qy)),
                 GetMouseClick => send_next_click = true,
                 msg => println!("{:?}", msg),
             }
+            let mut drawn = false;
+            while let Some((px, py, qx, qy)) = rects.pop(){
+                window.draw_rect(px, py, qx, qy)?;
+                drawn = true;
+            }
+            if drawn { window.redraw(); }
         }
         for event in event_pump.poll_iter() {
             match event {
@@ -67,7 +74,8 @@ pub fn main() -> Result<(), String> {
                     let winw = winw.max(0).unsigned_abs();
                     let winh = winh.max(0).unsigned_abs();
                     timer.checkpoint();
-                    window.redraw(winw, winh)?;
+                    window.draw_texture(winw, winh)?;
+                    window.redraw();
                     println!("Resizing: {:?}ms", timer.elapsed());
                 },
                 Event::KeyDown { .. } => {

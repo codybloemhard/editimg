@@ -4,8 +4,8 @@ use sdl2::{
     EventPump,
     video::{ Window, WindowContext },
     render::{ Canvas, TextureCreator, Texture },
-    pixels::PixelFormatEnum,
-    rect::Rect,
+    pixels::{ PixelFormatEnum, Color },
+    rect::{ Rect, Point },
 };
 
 use image::io::Reader as IR;
@@ -61,16 +61,44 @@ impl EIWindow{
         Ok(())
     }
 
-    pub fn redraw(&mut self, winw: u32, winh: u32) -> Result<(), String>{
+    pub fn redraw(&mut self){
+        self.canvas.present();
+    }
+
+    pub fn draw_texture(&mut self, winw: u32, winh: u32) -> Result<(), String>{
         self.canvas.clear();
         if let Some((texture, imgw, imgh)) = &self.texture{
             let (x, y, w, h) = resize_dims(*imgw, *imgh, winw, winh);
             self.canvas.copy(texture, None, Some(Rect::new(x, y, w, h)))?;
-            self.canvas.present();
             Ok(())
         } else {
             Err("Editimg error: window redraw with no valid texture available.".to_string())
         }
+    }
+
+    pub fn draw_rect(&mut self, px: i64, py: i64, qx: i64, qy: i64) -> Result<(), String>{
+        let dc = self.canvas.draw_color();
+        let draw_point_box = |skip: usize, canvas: &mut Canvas<Window>| -> Result<(), String>{
+            let t = (px..qx).into_iter().skip(skip).step_by(2)
+                .map(|x| Point::new(x as i32, py as i32)).collect::<Vec<_>>();
+            let b = (px..qx).into_iter().skip(skip)
+                .step_by(2).map(|x| Point::new(x as i32, qy as i32)).collect::<Vec<_>>();
+            let l = (py..qy).into_iter().skip(skip)
+                .step_by(2).map(|y| Point::new(px as i32, y as i32)).collect::<Vec<_>>();
+            let r = (py..qy).into_iter().skip(skip)
+                .step_by(2).map(|y| Point::new(qx as i32, y as i32)).collect::<Vec<_>>();
+            canvas.draw_points(t.as_slice())?;
+            canvas.draw_points(b.as_slice())?;
+            canvas.draw_points(l.as_slice())?;
+            canvas.draw_points(r.as_slice())?;
+            Ok(())
+        };
+        self.canvas.set_draw_color(Color::RGB(255, 255, 255));
+        draw_point_box(0, &mut self.canvas)?;
+        self.canvas.set_draw_color(Color::RGB(0, 0, 0));
+        draw_point_box(1, &mut self.canvas)?;
+        self.canvas.set_draw_color(dc);
+        Ok(())
     }
 }
 
