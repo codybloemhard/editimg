@@ -14,6 +14,7 @@ pub struct EIWindow{
     pub canvas: Canvas<Window>,
     pub texture_creator: TextureCreator<WindowContext>,
     pub texture: Option<(Texture, u32, u32)>,
+    rects: Vec<(i64, i64, i64, i64)>,
 }
 
 impl EIWindow{
@@ -33,7 +34,15 @@ impl EIWindow{
         let event_pump = sdl_context.event_pump()?;
 
         println!("Window: {:?}ms", timer.elapsed());
-        Ok((Self{canvas, texture_creator, texture: None}, event_pump))
+        Ok((
+            Self{
+                canvas,
+                texture_creator,
+                texture: None,
+                rects: Vec::new(),
+            },
+            event_pump
+        ))
     }
 
     pub fn set_texture(&mut self, file: &str, timer: &Timer) -> Result<(), String>
@@ -65,6 +74,17 @@ impl EIWindow{
         self.canvas.present();
     }
 
+    pub fn resize_redraw(&mut self, winw: u32, winh: u32) -> Result<(), String>{
+        self.draw_texture(winw, winh)?;
+        let rects = std::mem::take(&mut self.rects);
+        for (px, py, qx, qy) in &rects{
+            self._draw_rect(*px, *py, *qx, *qy)?;
+        }
+        self.rects = rects;
+        self.redraw();
+        Ok(())
+    }
+
     pub fn draw_texture(&mut self, winw: u32, winh: u32) -> Result<(), String>{
         self.canvas.clear();
         if let Some((texture, imgw, imgh)) = &self.texture{
@@ -77,6 +97,11 @@ impl EIWindow{
     }
 
     pub fn draw_rect(&mut self, px: i64, py: i64, qx: i64, qy: i64) -> Result<(), String>{
+        self.rects.push((px, py, qx, qy));
+        self._draw_rect(px, py, qx, qy)
+    }
+
+    pub fn _draw_rect(&mut self, px: i64, py: i64, qx: i64, qy: i64) -> Result<(), String>{
         let dc = self.canvas.draw_color();
         let draw_point_box = |skip: usize, canvas: &mut Canvas<Window>| -> Result<(), String>{
             let t = (px..qx).into_iter().skip(skip).step_by(2)

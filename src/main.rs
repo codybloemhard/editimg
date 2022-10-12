@@ -74,8 +74,7 @@ pub fn main() -> Result<(), String> {
                     let winw = winw.max(0).unsigned_abs();
                     let winh = winh.max(0).unsigned_abs();
                     timer.checkpoint();
-                    window.draw_texture(winw, winh)?;
-                    window.redraw();
+                    window.resize_redraw(winw, winh)?;
                     println!("Resizing: {:?}ms", timer.elapsed());
                 },
                 Event::KeyDown { .. } => {
