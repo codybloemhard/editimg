@@ -2,23 +2,23 @@ use rhai::Engine;
 
 use std::sync::mpsc;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum HostMsg{
     Kill,
     GetMouseClick,
     DebugI64(i64),
-    DrawRect(i64, i64, i64, i64),
+    DrawRect(f32, f32, f32, f32),
 }
 
 #[derive(Debug, Clone)]
 pub struct MouseClick{
-    pub x: i64,
-    pub y: i64,
+    pub x: f32,
+    pub y: f32,
 }
 
 impl MouseClick{
-    fn get_x(&mut self) -> i64 { self.x }
-    fn get_y(&mut self) -> i64 { self.y }
+    fn get_x(&mut self) -> f64 { self.x as f64 }
+    fn get_y(&mut self) -> f64 { self.y as f64 }
 }
 
 pub struct HostPortals{
@@ -67,8 +67,9 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
         .register_fn("put", move |v: i64| {
             th0.send(HostMsg::DebugI64(v)).expect(send_err);
         })
-        .register_fn("draw_rect", move |px: i64, py: i64, qx: i64, qy: i64| {
-            th2.send(HostMsg::DrawRect(px, py, qx, qy)).expect(send_err);
+        .register_fn("draw_rect", move |px: f64, py: f64, qx: f64, qy: f64| {
+            th2.send(HostMsg::DrawRect(px as f32, py as f32, qx as f32, qy as f32))
+                .expect(send_err);
         })
         .register_fn("get_mouse_click", move || -> MouseClick {
             th1.send(HostMsg::GetMouseClick).expect(send_err);

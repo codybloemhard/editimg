@@ -14,7 +14,13 @@ pub struct EIWindow{
     pub canvas: Canvas<Window>,
     pub texture_creator: TextureCreator<WindowContext>,
     pub texture: Option<(Texture, u32, u32)>,
-    rects: Vec<(i64, i64, i64, i64)>,
+    rects: Vec<(f32, f32, f32, f32)>,
+    winw: u32,
+    winh: u32,
+    imgx: i32,
+    imgy: i32,
+    imgw: u32,
+    imgh: u32,
 }
 
 impl EIWindow{
@@ -40,6 +46,12 @@ impl EIWindow{
                 texture_creator,
                 texture: None,
                 rects: Vec::new(),
+                winw: 1,
+                winh: 1,
+                imgx: 0,
+                imgy: 0,
+                imgw: 1,
+                imgh: 1,
             },
             event_pump
         ))
@@ -70,11 +82,20 @@ impl EIWindow{
         Ok(())
     }
 
+    pub fn screen_to_coord(&self, x: i32, y: i32) -> (f32, f32){
+        (
+            (x as f32 - self.imgx as f32) / self.imgw as f32,
+            (y as f32 - self.imgy as f32) / self.imgh as f32,
+        )
+    }
+
     pub fn redraw(&mut self){
         self.canvas.present();
     }
 
     pub fn resize_redraw(&mut self, winw: u32, winh: u32) -> Result<(), String>{
+        self.winw = winw;
+        self.winh = winh;
         self.draw_texture(winw, winh)?;
         let rects = std::mem::take(&mut self.rects);
         for (px, py, qx, qy) in &rects{
@@ -90,28 +111,36 @@ impl EIWindow{
         if let Some((texture, imgw, imgh)) = &self.texture{
             let (x, y, w, h) = resize_dims(*imgw, *imgh, winw, winh);
             self.canvas.copy(texture, None, Some(Rect::new(x, y, w, h)))?;
+            self.imgx = x;
+            self.imgy = y;
+            self.imgw = w;
+            self.imgh = h;
             Ok(())
         } else {
             Err("Editimg error: window redraw with no valid texture available.".to_string())
         }
     }
 
-    pub fn draw_rect(&mut self, px: i64, py: i64, qx: i64, qy: i64) -> Result<(), String>{
+    pub fn draw_rect(&mut self, px: f32, py: f32, qx: f32, qy: f32) -> Result<(), String>{
         self.rects.push((px, py, qx, qy));
         self._draw_rect(px, py, qx, qy)
     }
 
-    pub fn _draw_rect(&mut self, px: i64, py: i64, qx: i64, qy: i64) -> Result<(), String>{
+    pub fn _draw_rect(&mut self, px: f32, py: f32, qx: f32, qy: f32) -> Result<(), String>{
         let dc = self.canvas.draw_color();
+        let px = (px * self.imgw as f32 + self.imgx as f32) as i32;
+        let py = (py * self.imgh as f32 + self.imgy as f32) as i32;
+        let qx = (qx * self.imgw as f32 + self.imgx as f32) as i32;
+        let qy = (qy * self.imgh as f32 + self.imgy as f32) as i32;
         let draw_point_box = |skip: usize, canvas: &mut Canvas<Window>| -> Result<(), String>{
             let t = (px..qx).into_iter().skip(skip).step_by(2)
-                .map(|x| Point::new(x as i32, py as i32)).collect::<Vec<_>>();
+                .map(|x| Point::new(x, py)).collect::<Vec<_>>();
             let b = (px..qx).into_iter().skip(skip)
-                .step_by(2).map(|x| Point::new(x as i32, qy as i32)).collect::<Vec<_>>();
+                .step_by(2).map(|x| Point::new(x, qy)).collect::<Vec<_>>();
             let l = (py..qy).into_iter().skip(skip)
-                .step_by(2).map(|y| Point::new(px as i32, y as i32)).collect::<Vec<_>>();
+                .step_by(2).map(|y| Point::new(px, y)).collect::<Vec<_>>();
             let r = (py..qy).into_iter().skip(skip)
-                .step_by(2).map(|y| Point::new(qx as i32, y as i32)).collect::<Vec<_>>();
+                .step_by(2).map(|y| Point::new(qx, y)).collect::<Vec<_>>();
             canvas.draw_points(t.as_slice())?;
             canvas.draw_points(b.as_slice())?;
             canvas.draw_points(l.as_slice())?;

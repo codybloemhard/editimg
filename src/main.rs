@@ -29,7 +29,7 @@ pub fn main() -> Result<(), String> {
                 for _i in 0..2{
                     let mc = get_mouse_click();
                     print(`  Script Read: ${mc.x}, ${mc.y}`);
-                    draw_rect(mc.x, mc.y, mc.x + 100, mc.y + 100);
+                    draw_rect(mc.x, mc.y, mc.x + 0.1, mc.y + 0.1);
                 }
                 kill();
             "#,
@@ -83,7 +83,8 @@ pub fn main() -> Result<(), String> {
                 Event::MouseButtonDown{ mouse_btn: MouseButton::Left, clicks: 1, x, y, .. } => {
                     if send_next_click{
                         send_next_click = false;
-                        mc_to_rhai.send(MouseClick{ x: x as i64, y: y as i64 })
+                        let (x, y) = window.screen_to_coord(x, y);
+                        mc_to_rhai.send(MouseClick{ x, y })
                             .map_err(|e| e.to_string())?;
                     }
                 },
