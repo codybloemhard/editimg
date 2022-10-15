@@ -2,13 +2,41 @@ use rhai::Engine;
 
 use std::sync::mpsc;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum HostMsg{
     Kill,
     GetMouseClick,
     DebugI64(i64),
-    DrawRectUV(f32, f32, f32, f32),
-    DrawRectXY(i32, i32, i32, i32),
+    DrawRectUV(RectUV),
+    DrawRectXY(RectXY),
+}
+
+#[derive(Debug, Clone)]
+pub struct RectUV{
+    pub px: f32,
+    pub py: f32,
+    pub qx: f32,
+    pub qy: f32,
+}
+
+impl RectUV{
+    fn new(px: f32, py: f32, qx: f32, qy: f32) -> Self{
+        Self{ px, py, qx, qy }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct RectXY{
+    pub px: i32,
+    pub py: i32,
+    pub qx: i32,
+    pub qy: i32,
+}
+
+impl RectXY{
+    fn new(px: i32, py: i32, qx: i32, qy: i32) -> Self{
+        Self{ px, py, qx, qy }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -76,11 +104,11 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
             th0.send(HostMsg::DebugI64(v)).expect(send_err);
         })
         .register_fn("draw_rect_uv", move |px: f64, py: f64, qx: f64, qy: f64| {
-            th2.send(HostMsg::DrawRectUV(px as f32, py as f32, qx as f32, qy as f32))
+            th2.send(HostMsg::DrawRectUV(RectUV::new(px as f32, py as f32, qx as f32, qy as f32)))
                 .expect(send_err);
         })
         .register_fn("draw_rect_xy", move |px: i64, py: i64, qx: i64, qy: i64| {
-            th3.send(HostMsg::DrawRectXY(px as i32, py as i32, qx as i32, qy as i32))
+            th3.send(HostMsg::DrawRectXY(RectXY::new(px as i32, py as i32, qx as i32, qy as i32)))
                 .expect(send_err);
         })
         .register_fn("get_mouse_click", move || -> MouseClick {

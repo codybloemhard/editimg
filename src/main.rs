@@ -52,20 +52,15 @@ pub fn main() -> Result<(), String> {
             use HostMsg::*;
             match rhai_call{
                 Kill => break 'running,
-                DrawRectUV(px, py, qx, qy) => rects_uv.push((px, py, qx, qy)),
-                DrawRectXY(px, py, qx, qy) => rects_xy.push((px, py, qx, qy)),
+                DrawRectUV(r) => rects_uv.push(r),
+                DrawRectXY(r) => rects_xy.push(r),
                 GetMouseClick => send_next_click = true,
                 msg => println!("{:?}", msg),
             }
             let mut drawn = false;
-            while let Some((px, py, qx, qy)) = rects_uv.pop(){
-                window.draw_rect_uv(px, py, qx, qy)?;
-                drawn = true;
-            }
-            while let Some((px, py, qx, qy)) = rects_xy.pop(){
-                window.draw_rect_xy(px, py, qx, qy)?;
-                drawn = true;
-            }
+            if rects_uv.len() + rects_xy.len() > 0 { drawn = true; }
+            while let Some(r) = rects_uv.pop(){ window.draw_rect_uv(r)?; }
+            while let Some(r) = rects_xy.pop(){ window.draw_rect_xy(r)?; }
             if drawn { window.redraw(); }
         }
         for event in event_pump.poll_iter() {

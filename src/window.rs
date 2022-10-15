@@ -1,6 +1,6 @@
 use crate::{
     timer::Timer,
-    scripting::MouseClick,
+    scripting::{ MouseClick, RectUV, RectXY },
 };
 
 use sdl2::{
@@ -127,15 +127,19 @@ impl EIWindow{
         }
     }
 
-    pub fn draw_rect_xy(&mut self, px: i32, py: i32, qx: i32, qy: i32) -> Result<(), String>{
-        let px = px as f32 / self.imgw as f32;
-        let py = py as f32 / self.imgh as f32;
-        let qx = qx as f32 / self.imgw as f32;
-        let qy = qy as f32 / self.imgh as f32;
-        self.draw_rect_uv(px, py, qx, qy)
+    pub fn draw_rect_xy(&mut self, r: RectXY) -> Result<(), String>{
+        let px = r.px as f32 / self.imgw as f32;
+        let py = r.py as f32 / self.imgh as f32;
+        let qx = r.qx as f32 / self.imgw as f32;
+        let qy = r.qy as f32 / self.imgh as f32;
+        self._draw_rect_uv(px, py, qx, qy)
     }
 
-    pub fn draw_rect_uv(&mut self, px: f32, py: f32, qx: f32, qy: f32) -> Result<(), String>{
+    pub fn draw_rect_uv(&mut self, r: RectUV) -> Result<(), String>{
+        self._draw_rect_uv(r.px, r.py, r.qx, r.qy)
+    }
+
+    pub fn _draw_rect_uv(&mut self, px: f32, py: f32, qx: f32, qy: f32) -> Result<(), String>{
         self.rects.push((px, py, qx, qy));
         self._draw_rect(px, py, qx, qy)
     }
