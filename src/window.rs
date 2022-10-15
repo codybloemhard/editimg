@@ -1,4 +1,7 @@
-use crate::timer::Timer;
+use crate::{
+    timer::Timer,
+    scripting::MouseClick,
+};
 
 use sdl2::{
     EventPump,
@@ -82,11 +85,14 @@ impl EIWindow{
         Ok(())
     }
 
-    pub fn screen_to_coord(&self, x: i32, y: i32) -> (f32, f32){
-        (
-            (x as f32 - self.imgx as f32) / self.imgw as f32,
-            (y as f32 - self.imgy as f32) / self.imgh as f32,
-        )
+    pub fn screen_to_click(&self, x: i32, y: i32) -> MouseClick{
+        let u = (x as f32 - self.imgx as f32) / self.imgw as f32;
+        let v = (y as f32 - self.imgy as f32) / self.imgh as f32;
+        MouseClick{
+            u, v,
+            x: (u * self.imgw as f32) as i32,
+            y: (v * self.imgh as f32) as i32,
+        }
     }
 
     pub fn redraw(&mut self){
@@ -121,7 +127,15 @@ impl EIWindow{
         }
     }
 
-    pub fn draw_rect(&mut self, px: f32, py: f32, qx: f32, qy: f32) -> Result<(), String>{
+    pub fn draw_rect_xy(&mut self, px: i32, py: i32, qx: i32, qy: i32) -> Result<(), String>{
+        let px = px as f32 / self.imgw as f32;
+        let py = py as f32 / self.imgh as f32;
+        let qx = qx as f32 / self.imgw as f32;
+        let qy = qy as f32 / self.imgh as f32;
+        self.draw_rect_uv(px, py, qx, qy)
+    }
+
+    pub fn draw_rect_uv(&mut self, px: f32, py: f32, qx: f32, qy: f32) -> Result<(), String>{
         self.rects.push((px, py, qx, qy));
         self._draw_rect(px, py, qx, qy)
     }

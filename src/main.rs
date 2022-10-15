@@ -28,8 +28,8 @@ pub fn main() -> Result<(), String> {
                 print("Starting script loop...");
                 for _i in 0..2{
                     let mc = get_mouse_click();
-                    print(`  Script Read: ${mc.x}, ${mc.y}`);
-                    draw_rect(mc.x, mc.y, mc.x + 0.1, mc.y + 0.1);
+                    print(`  Script Read: ${mc.u}, ${mc.v}`);
+                    draw_rect_xy(mc.x, mc.y, mc.x + 50, mc.y + 50);
                 }
                 kill();
             "#,
@@ -44,20 +44,26 @@ pub fn main() -> Result<(), String> {
     window.set_texture(file, &timer)?;
 
     let mut send_next_click = false;
-    let mut rects = Vec::new();
+    let mut rects_uv = Vec::new();
+    let mut rects_xy = Vec::new();
 
     'running: loop {
         for rhai_call in from_rhai.try_iter(){
             use HostMsg::*;
             match rhai_call{
                 Kill => break 'running,
-                DrawRect(px, py, qx, qy) => rects.push((px, py, qx, qy)),
+                DrawRectUV(px, py, qx, qy) => rects_uv.push((px, py, qx, qy)),
+                DrawRectXY(px, py, qx, qy) => rects_xy.push((px, py, qx, qy)),
                 GetMouseClick => send_next_click = true,
                 msg => println!("{:?}", msg),
             }
             let mut drawn = false;
-            while let Some((px, py, qx, qy)) = rects.pop(){
-                window.draw_rect(px, py, qx, qy)?;
+            while let Some((px, py, qx, qy)) = rects_uv.pop(){
+                window.draw_rect_uv(px, py, qx, qy)?;
+                drawn = true;
+            }
+            while let Some((px, py, qx, qy)) = rects_xy.pop(){
+                window.draw_rect_xy(px, py, qx, qy)?;
                 drawn = true;
             }
             if drawn { window.redraw(); }
@@ -83,9 +89,8 @@ pub fn main() -> Result<(), String> {
                 Event::MouseButtonDown{ mouse_btn: MouseButton::Left, clicks: 1, x, y, .. } => {
                     if send_next_click{
                         send_next_click = false;
-                        let (x, y) = window.screen_to_coord(x, y);
-                        mc_to_rhai.send(MouseClick{ x, y })
-                            .map_err(|e| e.to_string())?;
+                        let mc = window.screen_to_click(x, y);
+                        mc_to_rhai.send(mc).map_err(|e| e.to_string())?;
                     }
                 },
                 _ => {}
