@@ -1,6 +1,6 @@
 use crate::{
     timer::Timer,
-    scripting::{ MouseClick, RectUV, RectXY },
+    scripting::{ RectUV, RectXY },
 };
 
 use sdl2::{
@@ -85,14 +85,14 @@ impl EIWindow{
         Ok(())
     }
 
-    pub fn screen_to_click(&self, x: i32, y: i32) -> MouseClick{
+    pub fn screen_to_click(&self, x: i32, y: i32) -> (f32, f32, i32, i32){
         let u = (x as f32 - self.imgx as f32) / self.imgw as f32;
         let v = (y as f32 - self.imgy as f32) / self.imgh as f32;
-        MouseClick{
+        (
             u, v,
-            x: (u * self.imgw as f32) as i32,
-            y: (v * self.imgh as f32) as i32,
-        }
+            (u * self.imgw as f32) as i32,
+            (v * self.imgh as f32) as i32,
+        )
     }
 
     pub fn redraw(&mut self){
@@ -151,14 +151,10 @@ impl EIWindow{
         let qx = (qx * self.imgw as f32 + self.imgx as f32) as i32;
         let qy = (qy * self.imgh as f32 + self.imgy as f32) as i32;
         let draw_point_box = |skip: usize, canvas: &mut Canvas<Window>| -> Result<(), String>{
-            let t = (px..qx).into_iter().skip(skip).step_by(2)
-                .map(|x| Point::new(x, py)).collect::<Vec<_>>();
-            let b = (px..qx).into_iter().skip(skip)
-                .step_by(2).map(|x| Point::new(x, qy)).collect::<Vec<_>>();
-            let l = (py..qy).into_iter().skip(skip)
-                .step_by(2).map(|y| Point::new(px, y)).collect::<Vec<_>>();
-            let r = (py..qy).into_iter().skip(skip)
-                .step_by(2).map(|y| Point::new(qx, y)).collect::<Vec<_>>();
+            let t = (px..qx).skip(skip).step_by(2).map(|x| Point::new(x, py)).collect::<Vec<_>>();
+            let b = (px..qx).skip(skip).step_by(2).map(|x| Point::new(x, qy)).collect::<Vec<_>>();
+            let l = (py..qy).skip(skip).step_by(2).map(|y| Point::new(px, y)).collect::<Vec<_>>();
+            let r = (py..qy).skip(skip).step_by(2).map(|y| Point::new(qx, y)).collect::<Vec<_>>();
             canvas.draw_points(t.as_slice())?;
             canvas.draw_points(b.as_slice())?;
             canvas.draw_points(l.as_slice())?;

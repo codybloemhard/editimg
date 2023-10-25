@@ -14,6 +14,8 @@ use sdl2::{
     mouse::MouseButton,
 };
 
+use std::collections::VecDeque;
+
 pub fn main() -> Result<(), String> {
     let (
         host_portals,
@@ -26,10 +28,14 @@ pub fn main() -> Result<(), String> {
         engine.run(
             r#"
                 print("Starting script loop...");
-                for _i in 0..2{
-                    let mc = get_mouse_click();
-                    print(`  Script Read: ${mc.u}, ${mc.v}`);
-                    draw_rect_xy(mc.x, mc.y, mc.x + 50, mc.y + 50);
+                while true{
+                    let e = get_input_event();
+                    if e.is_click {
+                        print(`  Script Read: ${e.u}, ${e.v}`);
+                        draw_rect_xy(e.x, e.y, e.x + 50, e.y + 50);
+                    } else if e.key == "Return"{
+                        kill();
+                    }
                 }
                 kill();
             "#,
@@ -40,10 +46,11 @@ pub fn main() -> Result<(), String> {
 
     let mut timer = Timer::new();
     let (mut window, mut event_pump) = EIWindow::create(&timer)?;
-    let file = "/home/cody/img/collections/janitor-pics/14_cracked_stones.png";
+    let file = "/home/cody/img/janitor-pics/14_cracked_stones.png";
     window.set_texture(file, &timer)?;
 
-    let mut send_next_click = false;
+    let mut polling = false;
+    let mut inputs = VecDeque::new();
     let mut rects_uv = Vec::new();
     let mut rects_xy = Vec::new();
 
@@ -54,7 +61,7 @@ pub fn main() -> Result<(), String> {
                 Kill => break 'running,
                 DrawRectUV(r) => rects_uv.push(r),
                 DrawRectXY(r) => rects_xy.push(r),
-                GetMouseClick => send_next_click = true,
+                GetInputEvent => polling = true,
                 msg => println!("{:?}", msg),
             }
             let mut drawn = false;
@@ -78,17 +85,20 @@ pub fn main() -> Result<(), String> {
                     window.resize_redraw(winw, winh)?;
                     println!("Resizing: {:?}ms", timer.elapsed());
                 },
-                Event::KeyDown { .. } => {
-                    println!("yeet");
+                Event::KeyDown { keycode: Some(kc), .. } => {
+                    inputs.push_back(Input::key(format!("{:?}", kc)));
                 },
                 Event::MouseButtonDown{ mouse_btn: MouseButton::Left, clicks: 1, x, y, .. } => {
-                    if send_next_click{
-                        send_next_click = false;
-                        let mc = window.screen_to_click(x, y);
-                        mc_to_rhai.send(mc).map_err(|e| e.to_string())?;
-                    }
+                    inputs.push_back(Input::click(window.screen_to_click(x, y)));
                 },
                 _ => {}
+            }
+        }
+
+        if polling {
+            if let Some(e) = inputs.pop_front() {
+                mc_to_rhai.send(e).map_err(|e| e.to_string())?;
+                polling = false;
             }
         }
     }
