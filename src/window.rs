@@ -128,6 +128,7 @@ impl EIWindow{
     }
 
     pub fn redraw_texture(&mut self) -> Result<(), String>{
+        self.canvas.clear();
         self.draw_texture(self.winw, self.winh)
     }
 

@@ -11,7 +11,6 @@ use crate::{
 use sdl2::{
     event::{ Event, WindowEvent },
     keyboard::Keycode,
-    mouse::MouseButton,
 };
 
 use std::collections::VecDeque;
@@ -28,13 +27,24 @@ pub fn main() -> Result<(), String> {
         engine.run(
             r#"
                 print("Starting script loop...");
+                let px = 0;
+                let py = 0;
+                let qx = 0;
+                let qy = 0;
                 while true{
                     let e = get_input_event();
                     if e.is_click {
                         print(`  Script Read: ${e.u}, ${e.v}`);
+                        if e.key == "left" {
+                            px = e.x;
+                            py = e.y;
+                        } else if e.key == "right" {
+                            qx = e.x;
+                            qy = e.y;
+                        }
                         clear_rects();
-                        draw_rect_xy(e.x, e.y, e.x + 50, e.y + 50);
-                    } else if e.key == "Return"{
+                        draw_rect_xy(px, py, qx, qy);
+                    } else if e.key == "return"{
                         kill();
                     }
                 }
@@ -91,10 +101,11 @@ pub fn main() -> Result<(), String> {
                     println!("Resizing: {:?}ms", timer.elapsed());
                 },
                 Event::KeyDown { keycode: Some(kc), .. } => {
-                    inputs.push_back(Input::key(format!("{:?}", kc)));
+                    inputs.push_back(Input::key(format!("{:?}", kc).to_lowercase()));
                 },
-                Event::MouseButtonDown{ mouse_btn: MouseButton::Left, clicks: 1, x, y, .. } => {
-                    inputs.push_back(Input::click(window.screen_to_click(x, y)));
+                Event::MouseButtonDown{ mouse_btn, clicks: 1, x, y, .. } => {
+                    let button = format!("{:?}", mouse_btn).to_lowercase();
+                    inputs.push_back(Input::click(window.screen_to_click(x, y), button));
                 },
                 _ => {}
             }

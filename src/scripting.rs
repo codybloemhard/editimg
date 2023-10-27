@@ -51,8 +51,8 @@ pub struct Input{
 }
 
 impl Input{
-    pub fn click(c: (f32, f32, i32, i32)) -> Self {
-        Self { is_click: true, key: "".to_string(), u: c.0, v: c.1, x: c.2, y: c.3 }
+    pub fn click(c: (f32, f32, i32, i32), key: String) -> Self {
+        Self { is_click: true, key, u: c.0, v: c.1, x: c.2, y: c.3 }
     }
 
     pub fn key(key: String) -> Self {
