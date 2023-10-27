@@ -102,6 +102,7 @@ impl EIWindow{
     pub fn resize_redraw(&mut self, winw: u32, winh: u32) -> Result<(), String>{
         self.winw = winw;
         self.winh = winh;
+        self.canvas.clear();
         self.draw_texture(winw, winh)?;
         let rects = std::mem::take(&mut self.rects);
         for (px, py, qx, qy) in &rects{
@@ -113,7 +114,6 @@ impl EIWindow{
     }
 
     pub fn draw_texture(&mut self, winw: u32, winh: u32) -> Result<(), String>{
-        self.canvas.clear();
         if let Some((texture, imgw, imgh)) = &self.texture{
             let (x, y, w, h) = resize_dims(*imgw, *imgh, winw, winh);
             self.canvas.copy(texture, None, Some(Rect::new(x, y, w, h)))?;
@@ -125,6 +125,14 @@ impl EIWindow{
         } else {
             Err("Editimg error: window redraw with no valid texture available.".to_string())
         }
+    }
+
+    pub fn redraw_texture(&mut self) -> Result<(), String>{
+        self.draw_texture(self.winw, self.winh)
+    }
+
+    pub fn clear_rects(&mut self){
+        self.rects.clear();
     }
 
     pub fn draw_rect_xy(&mut self, r: RectXY) -> Result<(), String>{

@@ -7,6 +7,7 @@ pub enum HostMsg{
     Kill,
     GetInputEvent,
     DebugI64(i64),
+    ClearRects,
     DrawRectUV(RectUV),
     DrawRectXY(RectXY),
 }
@@ -105,28 +106,32 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
 
     let receive_err = "Editimg: rhai thread could not receive from host.";
     let send_err = "Editimg: rhai thread could not send to host.";
-    let th0 = to_host.clone();
-    let th1 = to_host.clone();
-    let th2 = to_host.clone();
-    let th3 = to_host.clone();
+    let th_debug = to_host.clone();
+    let th_input = to_host.clone();
+    let th_ruv = to_host.clone();
+    let th_rxy = to_host.clone();
+    let th_clear = to_host.clone();
 
     engine
         .register_fn("kill", move || {
             to_host.send(HostMsg::Kill).expect(send_err);
         })
         .register_fn("put", move |v: i64| {
-            th0.send(HostMsg::DebugI64(v)).expect(send_err);
+            th_debug.send(HostMsg::DebugI64(v)).expect(send_err);
+        })
+        .register_fn("clear_rects", move || {
+            th_clear.clone().send(HostMsg::ClearRects).expect(send_err);
         })
         .register_fn("draw_rect_uv", move |px: f64, py: f64, qx: f64, qy: f64| {
-            th2.send(HostMsg::DrawRectUV(RectUV::new(px as f32, py as f32, qx as f32, qy as f32)))
+            th_ruv.send(HostMsg::DrawRectUV(RectUV::new(px as f32, py as f32, qx as f32, qy as f32)))
                 .expect(send_err);
         })
         .register_fn("draw_rect_xy", move |px: i64, py: i64, qx: i64, qy: i64| {
-            th3.send(HostMsg::DrawRectXY(RectXY::new(px as i32, py as i32, qx as i32, qy as i32)))
+            th_rxy.send(HostMsg::DrawRectXY(RectXY::new(px as i32, py as i32, qx as i32, qy as i32)))
                 .expect(send_err);
         })
         .register_fn("get_input_event", move || -> Input {
-            th1.send(HostMsg::GetInputEvent).expect(send_err);
+            th_input.send(HostMsg::GetInputEvent).expect(send_err);
             mc_from_host.recv().expect(receive_err)
         })
     ;

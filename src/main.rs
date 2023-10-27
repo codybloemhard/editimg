@@ -32,6 +32,7 @@ pub fn main() -> Result<(), String> {
                     let e = get_input_event();
                     if e.is_click {
                         print(`  Script Read: ${e.u}, ${e.v}`);
+                        clear_rects();
                         draw_rect_xy(e.x, e.y, e.x + 50, e.y + 50);
                     } else if e.key == "Return"{
                         kill();
@@ -55,21 +56,25 @@ pub fn main() -> Result<(), String> {
     let mut rects_xy = Vec::new();
 
     'running: loop {
+        let mut drawn = false;
         for rhai_call in from_rhai.try_iter(){
             use HostMsg::*;
             match rhai_call{
                 Kill => break 'running,
+                ClearRects => {
+                    window.clear_rects();
+                    window.redraw_texture()?;
+                },
                 DrawRectUV(r) => rects_uv.push(r),
                 DrawRectXY(r) => rects_xy.push(r),
                 GetInputEvent => polling = true,
                 msg => println!("{:?}", msg),
             }
-            let mut drawn = false;
             if rects_uv.len() + rects_xy.len() > 0 { drawn = true; }
             while let Some(r) = rects_uv.pop(){ window.draw_rect_uv(r)?; }
             while let Some(r) = rects_xy.pop(){ window.draw_rect_xy(r)?; }
-            if drawn { window.redraw(); }
         }
+        if drawn { window.redraw(); }
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. }
