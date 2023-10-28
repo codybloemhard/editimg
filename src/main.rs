@@ -34,7 +34,7 @@ pub fn main() -> Result<(), String> {
                 while true{
                     let e = get_input_event();
                     if e.is_click {
-                        print(`  Script Read: ${e.u}, ${e.v}`);
+                        print(`  Script Read: ${e.x}, ${e.y}`);
                         if e.key == "left" {
                             px = e.x;
                             py = e.y;

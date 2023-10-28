@@ -16,7 +16,7 @@ use image::io::Reader as IR;
 pub struct EIWindow{
     pub canvas: Canvas<Window>,
     pub texture_creator: TextureCreator<WindowContext>,
-    pub texture: Option<(Texture, u32, u32)>,
+    pub texture: Option<Texture>,
     rects: Vec<(f32, f32, f32, f32)>,
     winw: u32,
     winh: u32,
@@ -24,6 +24,8 @@ pub struct EIWindow{
     imgy: i32,
     imgw: u32,
     imgh: u32,
+    texw: u32,
+    texh: u32,
 }
 
 impl EIWindow{
@@ -55,6 +57,8 @@ impl EIWindow{
                 imgy: 0,
                 imgw: 1,
                 imgh: 1,
+                texw: 0,
+                texh: 0,
             },
             event_pump
         ))
@@ -78,7 +82,9 @@ impl EIWindow{
             .create_texture_streaming(PixelFormatEnum::RGBA32, imgw, imgh)
             .map_err(|e| e.to_string())?;
         texture.update(None, &img, 4 * imgw as usize).map_err(|e| e.to_string())?;
-        self.texture = Some((texture, imgw, imgh));
+        self.texture = Some(texture);
+        self.texw = imgw;
+        self.texh = imgh;
 
         println!("Texture: {:?}ms", timer.elapsed());
 
@@ -90,8 +96,8 @@ impl EIWindow{
         let v = (y as f32 - self.imgy as f32) / self.imgh as f32;
         (
             u, v,
-            (u * self.imgw as f32) as i32,
-            (v * self.imgh as f32) as i32,
+            (u * self.texw as f32) as i32,
+            (v * self.texh as f32) as i32,
         )
     }
 
@@ -114,8 +120,8 @@ impl EIWindow{
     }
 
     pub fn draw_texture(&mut self, winw: u32, winh: u32) -> Result<(), String>{
-        if let Some((texture, imgw, imgh)) = &self.texture{
-            let (x, y, w, h) = resize_dims(*imgw, *imgh, winw, winh);
+        if let Some(texture) = &self.texture{
+            let (x, y, w, h) = resize_dims(self.texw, self.texh, winw, winh);
             self.canvas.copy(texture, None, Some(Rect::new(x, y, w, h)))?;
             self.imgx = x;
             self.imgy = y;
@@ -137,10 +143,10 @@ impl EIWindow{
     }
 
     pub fn draw_rect_xy(&mut self, r: RectXY) -> Result<(), String>{
-        let px = r.px as f32 / self.imgw as f32;
-        let py = r.py as f32 / self.imgh as f32;
-        let qx = r.qx as f32 / self.imgw as f32;
-        let qy = r.qy as f32 / self.imgh as f32;
+        let px = r.px as f32 / self.texw as f32;
+        let py = r.py as f32 / self.texh as f32;
+        let qx = r.qx as f32 / self.texw as f32;
+        let qy = r.qy as f32 / self.texh as f32;
         self._draw_rect_uv(px, py, qx, qy)
     }
 
