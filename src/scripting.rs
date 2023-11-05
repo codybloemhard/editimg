@@ -6,6 +6,7 @@ use std::sync::mpsc;
 pub enum HostMsg{
     Kill,
     GetInputEvent,
+    GetWH,
     DebugI64(i64),
     ClearRects,
     DrawRectUV(RectUV),
@@ -67,26 +68,39 @@ impl Input{
     fn get_y(&mut self) -> i64 { self.y as i64 }
 }
 
+#[derive(Debug, Clone)]
+pub struct WH{
+    pub w: i64,
+    pub h: i64,
+}
+
+impl WH{
+    fn get_w(&mut self) -> i64 { self.w }
+    fn get_h(&mut self) -> i64 { self.h }
+}
+
 pub struct HostPortals{
     pub to_host: mpsc::Sender<HostMsg>,
-    pub mc_from_host: mpsc::Receiver<Input>,
+    pub input_from_host: mpsc::Receiver<Input>,
+    pub int_from_host: mpsc::Receiver<i64>,
 }
 
 pub struct RhaiPortals{
-    pub mc_to_rhai: mpsc::Sender<Input>,
     pub from_rhai: mpsc::Receiver<HostMsg>,
+    pub input_to_rhai: mpsc::Sender<Input>,
+    pub int_to_rhai: mpsc::Sender<i64>,
 }
 
 pub fn create_channels() -> (HostPortals, RhaiPortals){
     let (to_host, from_rhai) = mpsc::channel();
-    let (mc_to_rhai, mc_from_host) = mpsc::channel();
+    let (input_to_rhai, input_from_host) = mpsc::channel();
+    let (int_to_rhai, int_from_host) = mpsc::channel();
     (
         HostPortals{
-            to_host, mc_from_host,
+            to_host, input_from_host, int_from_host,
         },
         RhaiPortals{
-            mc_to_rhai,
-            from_rhai,
+            from_rhai, input_to_rhai, int_to_rhai,
         }
     )
 }
@@ -94,7 +108,7 @@ pub fn create_channels() -> (HostPortals, RhaiPortals){
 pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
     let mut engine = Engine::new();
 
-    let HostPortals{ to_host, mc_from_host } = host_portals;
+    let HostPortals{ to_host, input_from_host, int_from_host } = host_portals;
 
     engine.register_type_with_name::<Input>("Input")
         .register_get("is_click", Input::get_is_click)
@@ -103,14 +117,19 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
         .register_get("v", Input::get_v)
         .register_get("x", Input::get_x)
         .register_get("y", Input::get_y);
+    engine.register_type_with_name::<WH>("WH")
+        .register_get("w", WH::get_w)
+        .register_get("h", WH::get_h);
 
     let receive_err = "Editimg: rhai thread could not receive from host.";
     let send_err = "Editimg: rhai thread could not send to host.";
+
     let th_debug = to_host.clone();
     let th_input = to_host.clone();
     let th_ruv = to_host.clone();
     let th_rxy = to_host.clone();
     let th_clear = to_host.clone();
+    let th_wh = to_host.clone();
 
     engine
         .register_fn("kill", move || {
@@ -132,7 +151,14 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
         })
         .register_fn("get_input_event", move || -> Input {
             th_input.send(HostMsg::GetInputEvent).expect(send_err);
-            mc_from_host.recv().expect(receive_err)
+            input_from_host.recv().expect(receive_err)
+        })
+        .register_fn("get_wh", move || -> WH {
+            th_wh.send(HostMsg::GetWH).expect(send_err);
+            WH{
+                w: int_from_host.recv().expect(receive_err),
+                h: int_from_host.recv().expect(receive_err),
+            }
         })
     ;
 

@@ -64,6 +64,10 @@ impl EIWindow{
         ))
     }
 
+    pub fn get_wh(&self) -> (u32, u32) {
+        (self.texw, self.texh)
+    }
+
     pub fn set_texture(&mut self, file: &str, timer: &Timer) -> Result<(), String>
     {
         let img = IR::open(file)
