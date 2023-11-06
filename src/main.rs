@@ -40,6 +40,7 @@ pub fn main() -> Result<(), String> {
                     let oqx = qx;
                     let oqy = qy;
                     let e = get_input_event();
+                    if e.key == "termination" { break; }
                     if e.is_click {
                         print(`  Script Read: ${e.x}, ${e.y}`);
                         if e.key == "left" {
@@ -109,10 +110,12 @@ pub fn main() -> Result<(), String> {
 
     'running: loop {
         let mut drawn = false;
+        let mut die = false;
+
         for rhai_call in from_rhai.try_iter(){
             use HostMsg::*;
             match rhai_call{
-                Kill => break 'running,
+                Kill => { die = true; break; },
                 ClearRects => {
                     window.clear_rects();
                     window.redraw_texture()?;
@@ -128,13 +131,17 @@ pub fn main() -> Result<(), String> {
             while let Some(r) = rects_xy.pop(){ window.draw_rect_xy(r)?; }
         }
         if drawn { window.redraw(); }
+
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. }
                 | Event::KeyDown {
                     keycode: Some(Keycode::Escape),
                     ..
-                } => break 'running,
+                } => {
+                    die = true;
+                    break;
+                },
                 Event::Window{ win_event: WindowEvent::Resized(winw, winh), .. } => {
                     println!("Resized: ({winw}, {winh})");
                     let winw = winw.max(0).unsigned_abs();
@@ -167,6 +174,12 @@ pub fn main() -> Result<(), String> {
                     polls.pop_front();
                 },
             }
+        }
+
+        if die {
+            input_to_rhai.send(Input::key("termination".to_string())).map_err(|e| e.to_string())?;
+            int_to_rhai.send(-1).map_err(|e| e.to_string())?;
+            break;
         }
     }
 
