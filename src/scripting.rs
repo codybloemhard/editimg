@@ -11,6 +11,7 @@ pub enum HostMsg{
     ClearRects,
     DrawRectUV(RectUV),
     DrawRectXY(RectXY),
+    Crop(i64, i64, i64, i64, i64),
 }
 
 #[derive(Debug, Clone)]
@@ -83,24 +84,27 @@ pub struct HostPortals{
     pub to_host: mpsc::Sender<HostMsg>,
     pub input_from_host: mpsc::Receiver<Input>,
     pub int_from_host: mpsc::Receiver<i64>,
+    pub crop_from_host: mpsc::Receiver<i64>,
 }
 
 pub struct RhaiPortals{
     pub from_rhai: mpsc::Receiver<HostMsg>,
     pub input_to_rhai: mpsc::Sender<Input>,
     pub int_to_rhai: mpsc::Sender<i64>,
+    pub crop_to_rhai: mpsc::Sender<i64>,
 }
 
 pub fn create_channels() -> (HostPortals, RhaiPortals){
     let (to_host, from_rhai) = mpsc::channel();
     let (input_to_rhai, input_from_host) = mpsc::channel();
     let (int_to_rhai, int_from_host) = mpsc::channel();
+    let (crop_to_rhai, crop_from_host) = mpsc::channel();
     (
         HostPortals{
-            to_host, input_from_host, int_from_host,
+            to_host, input_from_host, int_from_host, crop_from_host,
         },
         RhaiPortals{
-            from_rhai, input_to_rhai, int_to_rhai,
+            from_rhai, input_to_rhai, int_to_rhai, crop_to_rhai,
         }
     )
 }
@@ -108,7 +112,9 @@ pub fn create_channels() -> (HostPortals, RhaiPortals){
 pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
     let mut engine = Engine::new();
 
-    let HostPortals{ to_host, input_from_host, int_from_host } = host_portals;
+    let HostPortals{
+        to_host, input_from_host, int_from_host, crop_from_host,
+    } = host_portals;
 
     engine.register_type_with_name::<Input>("Input")
         .register_get("is_click", Input::get_is_click)
@@ -130,6 +136,7 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
     let th_rxy = to_host.clone();
     let th_clear = to_host.clone();
     let th_wh = to_host.clone();
+    let th_crop = to_host.clone();
 
     engine
         .register_fn("kill", move || {
@@ -159,6 +166,10 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
                 w: int_from_host.recv().expect(receive_err),
                 h: int_from_host.recv().expect(receive_err),
             }
+        })
+        .register_fn("crop", move |b: i64, px: i64, py: i64, qx: i64, qy: i64| -> i64{
+            th_crop.send(HostMsg::Crop(b, px, py, qx, qy)).expect(send_err);
+            crop_from_host.recv().expect(receive_err)
         })
     ;
 

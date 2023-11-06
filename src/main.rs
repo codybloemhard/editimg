@@ -13,12 +13,16 @@ use sdl2::{
     keyboard::Keycode,
 };
 
+use image::io::Reader as IR;
+
 use std::collections::VecDeque;
 
 pub fn main() -> Result<(), String> {
     let (
         host_portals,
-        RhaiPortals{ from_rhai, input_to_rhai, int_to_rhai },
+        RhaiPortals{
+            from_rhai, input_to_rhai, int_to_rhai, crop_to_rhai,
+        },
     ) = create_channels();
 
     std::thread::spawn(move || {
@@ -51,6 +55,7 @@ pub fn main() -> Result<(), String> {
                             qy = e.y;
                         }
                     } else if e.key == "return"{
+                        crop(0, px, py, qx, qy);
                         kill();
                     }
                     else if e.key == "s"{
@@ -99,16 +104,28 @@ pub fn main() -> Result<(), String> {
 
     let mut timer = Timer::new();
     let (mut window, mut event_pump) = EIWindow::create(&timer)?;
-    let file = "/home/cody/img/janitor-pics/14_cracked_stones.png";
-    window.set_texture(file, &timer)?;
 
-    enum PollType { Input, WH }
+    let file = "/home/cody/img/janitor-pics/14_cracked_stones.png";
+    let img = IR::open(file)
+        .map_err(|e| e.to_string())?
+        .decode()
+        .map_err(|e| e.to_string())?;
+    println!("Image: {:?}ms", timer.elapsed());
+    window.set_texture(&img, &timer)?;
+
+    enum PollType {
+        Input,
+        WH,
+        Crop(i64, i64, i64, i64, i64),
+    }
+
     let mut polls = VecDeque::new();
     let mut inputs = VecDeque::new();
     let mut rects_uv = Vec::new();
     let mut rects_xy = Vec::new();
+    let mut images = vec![img];
 
-    'running: loop {
+    loop {
         let mut drawn = false;
         let mut die = false;
 
@@ -116,15 +133,16 @@ pub fn main() -> Result<(), String> {
             use HostMsg::*;
             match rhai_call{
                 Kill => { die = true; break; },
+                GetInputEvent => polls.push_back(PollType::Input),
+                GetWH => polls.push_back(PollType::WH),
+                DebugI64(i) => println!("{:?}", i),
                 ClearRects => {
                     window.clear_rects();
                     window.redraw_texture()?;
                 },
                 DrawRectUV(r) => rects_uv.push(r),
                 DrawRectXY(r) => rects_xy.push(r),
-                GetInputEvent => polls.push_back(PollType::Input),
-                GetWH => polls.push_back(PollType::WH),
-                msg => println!("{:?}", msg),
+                Crop(b, px, py, qx, qy) => polls.push_back(PollType::Crop(b, px, py, qx, qy)),
             }
             if rects_uv.len() + rects_xy.len() > 0 { drawn = true; }
             while let Some(r) = rects_uv.pop(){ window.draw_rect_uv(r)?; }
@@ -173,6 +191,13 @@ pub fn main() -> Result<(), String> {
                     int_to_rhai.send(h as i64).map_err(|e| e.to_string())?;
                     polls.pop_front();
                 },
+                PollType::Crop(b, px, py, qx, qy) => {
+                    let (px, py, qx, qy) = img_crop(*px, *py, *qx, *qy);
+                    let c = images[*b as usize].crop(px, py, qx - px, qy - py);
+                    crop_to_rhai.send(1).map_err(|e| e.to_string())?;
+                    polls.pop_front();
+                    c.save("output.jpg").map_err(|e| e.to_string())?;
+                },
             }
         }
 
@@ -185,5 +210,13 @@ pub fn main() -> Result<(), String> {
 
     println!("Editimg: finished.");
     Ok(())
+}
+
+fn img_crop(px: i64, py: i64, qx: i64, qy: i64) -> (u32, u32, u32, u32) {
+    let npx = px.min(qx).max(0) as u32;
+    let npy = py.min(qy).max(0) as u32;
+    let nqx = px.max(qx).max(0) as u32;
+    let nqy = py.max(qy).max(0) as u32;
+    (npx, npy, nqx, nqy)
 }
 

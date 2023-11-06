@@ -11,7 +11,7 @@ use sdl2::{
     rect::{ Rect, Point },
 };
 
-use image::io::Reader as IR;
+use image::DynamicImage;
 
 pub struct EIWindow{
     pub canvas: Canvas<Window>,
@@ -68,24 +68,18 @@ impl EIWindow{
         (self.texw, self.texh)
     }
 
-    pub fn set_texture(&mut self, file: &str, timer: &Timer) -> Result<(), String>
+    pub fn set_texture(&mut self, img: &DynamicImage, timer: &Timer) -> Result<(), String>
     {
-        let img = IR::open(file)
-            .map_err(|e| e.to_string())?
-            .decode()
-            .map_err(|e| e.to_string())?
-            .into_rgba8();
+        let plain = img.to_rgba8();
 
-        let imgw = img.width();
-        let imgh = img.height();
-
-        println!("Image: {:?}ms", timer.elapsed());
+        let imgw = plain.width();
+        let imgh = plain.height();
 
         let mut texture = self
             .texture_creator
             .create_texture_streaming(PixelFormatEnum::RGBA32, imgw, imgh)
             .map_err(|e| e.to_string())?;
-        texture.update(None, &img, 4 * imgw as usize).map_err(|e| e.to_string())?;
+        texture.update(None, &plain, 4 * imgw as usize).map_err(|e| e.to_string())?;
         self.texture = Some(texture);
         self.texw = imgw;
         self.texh = imgh;
