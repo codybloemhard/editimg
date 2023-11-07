@@ -12,6 +12,7 @@ pub enum HostMsg{
     DrawRectUV(RectUV),
     DrawRectXY(RectXY),
     Crop(i64, i64, i64, i64, i64, i64),
+    Save(i64, String),
 }
 
 #[derive(Debug, Clone)]
@@ -137,6 +138,7 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
     let th_clear = to_host.clone();
     let th_wh = to_host.clone();
     let th_crop = to_host.clone();
+    let th_save = to_host.clone();
 
     engine
         .register_fn("kill", move || {
@@ -170,6 +172,9 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
         .register_fn("crop", move |s: i64, d: i64, px: i64, py: i64, qx: i64, qy: i64| -> i64{
             th_crop.send(HostMsg::Crop(s, d, px, py, qx, qy)).expect(send_err);
             crop_from_host.recv().expect(receive_err)
+        })
+        .register_fn("save", move |s: i64, p: String|{
+            th_save.send(HostMsg::Save(s, p)).expect(send_err);
         })
     ;
 

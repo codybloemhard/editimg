@@ -55,15 +55,7 @@ pub fn main() -> Result<(), String> {
                             qy = e.y;
                         }
                     } else if e.key == "return"{
-                        crop(0, 0, px, py, qx, qy);
-                        wh = get_wh();
-                        w = wh.w;
-                        h = wh.h;
-                        px = w/2;
-                        py = h/2;
-                        qx = w/2;
-                        qy = h/2;
-                        // kill();
+                        break;
                     }
                     else if e.key == "s"{
                         px -= 10;
@@ -102,6 +94,8 @@ pub fn main() -> Result<(), String> {
                         draw_rect_xy(px, py, qx, qy);
                     }
                 }
+                crop(0, 0, px, py, qx, qy);
+                save(0, "cropped.jpg");
                 kill();
             "#,
         ).expect("Editimg: rhai error");
@@ -124,6 +118,7 @@ pub fn main() -> Result<(), String> {
         Input,
         WH,
         Crop(i64, i64, i64, i64, i64, i64),
+        Save(i64, String),
     }
 
     let mut polls = VecDeque::new();
@@ -150,6 +145,7 @@ pub fn main() -> Result<(), String> {
                 DrawRectUV(r) => rects_uv.push(r),
                 DrawRectXY(r) => rects_xy.push(r),
                 Crop(s, d, px, py, qx, qy) => polls.push_back(PollType::Crop(s, d, px, py, qx, qy)),
+                Save(s, p) => polls.push_back(PollType::Save(s, p)),
             }
             if rects_uv.len() + rects_xy.len() > 0 { drawn = true; }
             while let Some(r) = rects_uv.pop(){ window.draw_rect_uv(r)?; }
@@ -210,20 +206,25 @@ pub fn main() -> Result<(), String> {
                         d
                     };
                     crop_to_rhai.send(d as i64).map_err(|e| e.to_string())?;
-                    polls.pop_front();
-                    images[d].save("output.jpg").map_err(|e| e.to_string())?;
                     if d == 0{
                         window.set_texture(&images[0], &mut timer)?;
                         window.redraw_texture()?;
                         drawn = true;
                     }
+                    polls.pop_front();
+                },
+                PollType::Save(source, path) => {
+                    let s = ((*source).max(0) as usize).min(images.len() - 1);
+                    images[s].save(path).map_err(|e| e.to_string())?;
+                    polls.pop_front();
                 },
             }
         }
 
         if die {
-            input_to_rhai.send(Input::key("termination".to_string())).map_err(|e| e.to_string())?;
-            int_to_rhai.send(-1).map_err(|e| e.to_string())?;
+            // do not yield error on purpose: channel maybe closed, and that is alright.
+            let _ = input_to_rhai.send(Input::key("termination".to_string()));
+            let _ = int_to_rhai.send(-1);
             break;
         }
 
