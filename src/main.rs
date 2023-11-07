@@ -55,8 +55,15 @@ pub fn main() -> Result<(), String> {
                             qy = e.y;
                         }
                     } else if e.key == "return"{
-                        crop(0, px, py, qx, qy);
-                        kill();
+                        crop(0, 0, px, py, qx, qy);
+                        wh = get_wh();
+                        w = wh.w;
+                        h = wh.h;
+                        px = w/2;
+                        py = h/2;
+                        qx = w/2;
+                        qy = h/2;
+                        // kill();
                     }
                     else if e.key == "s"{
                         px -= 10;
@@ -111,12 +118,12 @@ pub fn main() -> Result<(), String> {
         .decode()
         .map_err(|e| e.to_string())?;
     println!("Image: {:?}ms", timer.elapsed());
-    window.set_texture(&img, &timer)?;
+    window.set_texture(&img, &mut timer)?;
 
     enum PollType {
         Input,
         WH,
-        Crop(i64, i64, i64, i64, i64),
+        Crop(i64, i64, i64, i64, i64, i64),
     }
 
     let mut polls = VecDeque::new();
@@ -142,13 +149,12 @@ pub fn main() -> Result<(), String> {
                 },
                 DrawRectUV(r) => rects_uv.push(r),
                 DrawRectXY(r) => rects_xy.push(r),
-                Crop(b, px, py, qx, qy) => polls.push_back(PollType::Crop(b, px, py, qx, qy)),
+                Crop(s, d, px, py, qx, qy) => polls.push_back(PollType::Crop(s, d, px, py, qx, qy)),
             }
             if rects_uv.len() + rects_xy.len() > 0 { drawn = true; }
             while let Some(r) = rects_uv.pop(){ window.draw_rect_uv(r)?; }
             while let Some(r) = rects_xy.pop(){ window.draw_rect_xy(r)?; }
         }
-        if drawn { window.redraw(); }
 
         for event in event_pump.poll_iter() {
             match event {
@@ -191,12 +197,26 @@ pub fn main() -> Result<(), String> {
                     int_to_rhai.send(h as i64).map_err(|e| e.to_string())?;
                     polls.pop_front();
                 },
-                PollType::Crop(b, px, py, qx, qy) => {
+                PollType::Crop(s, d, px, py, qx, qy) => {
                     let (px, py, qx, qy) = img_crop(*px, *py, *qx, *qy);
-                    let c = images[*b as usize].crop(px, py, qx - px, qy - py);
-                    crop_to_rhai.send(1).map_err(|e| e.to_string())?;
+                    let s = ((*s).max(0) as usize).min(images.len() - 1);
+                    let c = images[s].crop(px, py, qx - px, qy - py);
+                    let d = if *d < 0 {
+                        images.push(c);
+                        images.len() - 1
+                    } else {
+                        let d = ((*d).max(0) as usize).min(images.len() - 1);
+                        images[d] = c;
+                        d
+                    };
+                    crop_to_rhai.send(d as i64).map_err(|e| e.to_string())?;
                     polls.pop_front();
-                    c.save("output.jpg").map_err(|e| e.to_string())?;
+                    images[d].save("output.jpg").map_err(|e| e.to_string())?;
+                    if d == 0{
+                        window.set_texture(&images[0], &mut timer)?;
+                        window.redraw_texture()?;
+                        drawn = true;
+                    }
                 },
             }
         }
@@ -206,6 +226,8 @@ pub fn main() -> Result<(), String> {
             int_to_rhai.send(-1).map_err(|e| e.to_string())?;
             break;
         }
+
+        if drawn { window.redraw(); }
     }
 
     println!("Editimg: finished.");

@@ -68,10 +68,13 @@ impl EIWindow{
         (self.texw, self.texh)
     }
 
-    pub fn set_texture(&mut self, img: &DynamicImage, timer: &Timer) -> Result<(), String>
+    pub fn set_texture(&mut self, img: &DynamicImage, timer: &mut Timer) -> Result<(), String>
     {
-        let plain = img.to_rgba8();
+        if self.texture.is_some() {
+            timer.checkpoint();
+        }
 
+        let plain = img.to_rgba8();
         let imgw = plain.width();
         let imgh = plain.height();
 
