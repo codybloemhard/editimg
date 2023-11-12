@@ -13,9 +13,14 @@ use sdl2::{
     keyboard::Keycode,
 };
 
+use simpleio as sio;
+
 use image::io::Reader as IR;
 
-use std::collections::VecDeque;
+use std::{
+    collections::VecDeque,
+    sync::mpsc,
+};
 
 pub fn main() -> Result<(), String> {
     let (
@@ -24,82 +29,29 @@ pub fn main() -> Result<(), String> {
             from_rhai, input_to_rhai, int_to_rhai, crop_to_rhai,
         },
     ) = create_channels();
+    let (to_host, from_thread) = mpsc::channel();
+
+    let mut fpath = sio::get_home().unwrap();
+    fpath.push(".config/editimg/crop.rhai.rs");
+    let rhai_code = sio::read_file_into_string(&fpath).unwrap();
 
     std::thread::spawn(move || {
         let engine = construct_rhai_engine(host_portals);
-
-        engine.run(
-            r#"
-                print("Starting script loop...");
-                let wh = get_wh();
-                let w = wh.w;
-                let h = wh.h;
-                let px = w/2;
-                let py = h/2;
-                let qx = w/2;
-                let qy = h/2;
-                while true{
-                    let opx = px;
-                    let opy = py;
-                    let oqx = qx;
-                    let oqy = qy;
-                    let e = get_input_event();
-                    if e.key == "termination" { break; }
-                    if e.is_click {
-                        print(`  Script Read: ${e.x}, ${e.y}`);
-                        if e.key == "left" {
-                            px = e.x;
-                            py = e.y;
-                        } else if e.key == "right" {
-                            qx = e.x;
-                            qy = e.y;
-                        }
-                    } else if e.key == "return"{
-                        break;
-                    }
-                    else if e.key == "s"{
-                        px -= 10;
-                        qx -= 10;
-                    }
-                    else if e.key == "n"{
-                        px += 10;
-                        qx += 10;
-                    }
-                    else if e.key == "m"{
-                        py -= 10;
-                        qy -= 10;
-                    }
-                    else if e.key == "t"{
-                        py += 10;
-                        qy += 10;
-                    }
-                    else if e.key == "a"{
-                        px += 10;
-                        qx -= 10;
-                    }
-                    else if e.key == "o"{
-                        px -= 10;
-                        qx += 10;
-                    }
-                    else if e.key == "u"{
-                        py -= 10;
-                        qy += 10;
-                    }
-                    else if e.key == "e"{
-                        py += 10;
-                        qy -= 10;
-                    }
-                    if px != opx || py != opy || qx != oqx || qy != oqy{
-                        clear_rects();
-                        draw_rect_xy(px, py, qx, qy);
-                    }
-                }
-                crop(0, 0, px, py, qx, qy);
-                save(0, "cropped.jpg");
-                kill();
-            "#,
-        ).expect("Editimg: rhai error");
+        match engine.compile(&rhai_code) {
+            Ok(ast) => {
+                to_host.send(None).expect("Editimg: compilation verification send error");
+                engine.run_ast(&ast).expect("Editimg: rhai run error");
+            },
+            Err(e) => {
+                to_host.send(Some(e)).expect("Editimg: compilation verification send error");
+            },
+        }
     });
+
+    if let Some(e) = from_thread.recv().expect("Editimg: compilation verification receive error") {
+        println!("Rhai Compile error: {}", e);
+        return Err("Editimg: could not compile, aborting".to_string());
+    }
 
     println!("Starting main loop...");
 
