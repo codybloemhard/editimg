@@ -17,12 +17,24 @@ use simpleio as sio;
 
 use image::io::Reader as IR;
 
+use clap::Parser;
+
 use std::{
     collections::VecDeque,
     sync::mpsc,
+    path::PathBuf,
 };
 
+#[derive(Parser, Debug)]
+#[clap(author, version, about, long_about = None)]
+struct Args {
+    input: PathBuf,
+}
+
 pub fn main() -> Result<(), String> {
+
+    let args = Args::parse();
+
     let (
         host_portals,
         RhaiPortals{
@@ -58,8 +70,7 @@ pub fn main() -> Result<(), String> {
     let mut timer = Timer::new();
     let (mut window, mut event_pump) = EIWindow::create(&timer)?;
 
-    let file = "/home/cody/img/janitor-pics/14_cracked_stones.png";
-    let img = IR::open(file)
+    let img = IR::open(args.input)
         .map_err(|e| e.to_string())?
         .decode()
         .map_err(|e| e.to_string())?;
