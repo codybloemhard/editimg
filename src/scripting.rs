@@ -3,7 +3,7 @@ use rhai::Engine;
 use std::sync::mpsc;
 
 #[derive(Debug, Clone)]
-pub enum HostMsg{
+pub enum HostMsg {
     Kill,
     GetInputEvent,
     GetWH,
@@ -16,21 +16,21 @@ pub enum HostMsg{
 }
 
 #[derive(Debug, Clone)]
-pub struct RectUV{
+pub struct RectUV {
     pub px: f32,
     pub py: f32,
     pub qx: f32,
     pub qy: f32,
 }
 
-impl RectUV{
-    fn new(px: f32, py: f32, qx: f32, qy: f32) -> Self{
+impl RectUV {
+    fn new(px: f32, py: f32, qx: f32, qy: f32) -> Self {
         Self{ px, py, qx, qy }
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct RectXY{
+pub struct RectXY {
     pub px: i32,
     pub py: i32,
     pub qx: i32,
@@ -38,13 +38,20 @@ pub struct RectXY{
 }
 
 impl RectXY{
-    fn new(px: i32, py: i32, qx: i32, qy: i32) -> Self{
+    fn new(px: i32, py: i32, qx: i32, qy: i32) -> Self {
         Self{ px, py, qx, qy }
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct Input{
+pub enum RhaiMsg {
+    Killed,
+    Input(Input),
+    Int(i64),
+}
+
+#[derive(Debug, Clone)]
+pub struct Input {
     pub is_click: bool,
     pub key: String,
     pub u: f32,
@@ -53,7 +60,7 @@ pub struct Input{
     pub y: i32,
 }
 
-impl Input{
+impl Input {
     pub fn click(c: (f32, f32, i32, i32), key: String) -> Self {
         Self { is_click: true, key, u: c.0, v: c.1, x: c.2, y: c.3 }
     }
@@ -71,41 +78,35 @@ impl Input{
 }
 
 #[derive(Debug, Clone)]
-pub struct WH{
+pub struct WH {
     pub w: i64,
     pub h: i64,
 }
 
-impl WH{
+impl WH {
     fn get_w(&mut self) -> i64 { self.w }
     fn get_h(&mut self) -> i64 { self.h }
 }
 
-pub struct HostPortals{
+pub struct HostPortals {
     pub to_host: mpsc::Sender<HostMsg>,
-    pub input_from_host: mpsc::Receiver<Input>,
-    pub int_from_host: mpsc::Receiver<i64>,
-    pub crop_from_host: mpsc::Receiver<i64>,
+    pub from_host: spmc::Receiver<RhaiMsg>,
 }
 
-pub struct RhaiPortals{
+pub struct RhaiPortals {
     pub from_rhai: mpsc::Receiver<HostMsg>,
-    pub input_to_rhai: mpsc::Sender<Input>,
-    pub int_to_rhai: mpsc::Sender<i64>,
-    pub crop_to_rhai: mpsc::Sender<i64>,
+    pub to_rhai: spmc::Sender<RhaiMsg>,
 }
 
-pub fn create_channels() -> (HostPortals, RhaiPortals){
+pub fn create_channels() -> (HostPortals, RhaiPortals) {
     let (to_host, from_rhai) = mpsc::channel();
-    let (input_to_rhai, input_from_host) = mpsc::channel();
-    let (int_to_rhai, int_from_host) = mpsc::channel();
-    let (crop_to_rhai, crop_from_host) = mpsc::channel();
+    let (to_rhai, from_host) = spmc::channel();
     (
-        HostPortals{
-            to_host, input_from_host, int_from_host, crop_from_host,
+        HostPortals {
+            to_host, from_host,
         },
-        RhaiPortals{
-            from_rhai, input_to_rhai, int_to_rhai, crop_to_rhai,
+        RhaiPortals {
+            from_rhai, to_rhai,
         }
     )
 }
@@ -114,7 +115,7 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
     let mut engine = Engine::new();
 
     let HostPortals{
-        to_host, input_from_host, int_from_host, crop_from_host,
+        to_host, from_host,
     } = host_portals;
 
     engine.register_type_with_name::<Input>("Input")
@@ -140,6 +141,10 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
     let th_crop = to_host.clone();
     let th_save = to_host.clone();
 
+    let fh_input = from_host.clone();
+    let fh_wh = from_host.clone();
+    let fh_crop = from_host.clone();
+
     engine
         .register_fn("kill", move || {
             to_host.send(HostMsg::Kill).expect(send_err);
@@ -160,20 +165,37 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
         })
         .register_fn("get_input_event", move || -> Input {
             th_input.send(HostMsg::GetInputEvent).expect(send_err);
-            input_from_host.recv().expect(receive_err)
+            if let RhaiMsg::Input(input) = fh_input.recv().expect(receive_err) {
+                input
+            } else {
+                panic!("Editimg: rhai thread expected input but received otherwise.")
+            }
         })
         .register_fn("get_wh", move || -> WH {
             th_wh.send(HostMsg::GetWH).expect(send_err);
-            WH{
-                w: int_from_host.recv().expect(receive_err),
-                h: int_from_host.recv().expect(receive_err),
+            let w = if let RhaiMsg::Int(i) = fh_wh.recv().expect(receive_err) {
+                i
+            } else {
+                panic!("Editimg: rhai thread expected width but received otherwise.")
+            };
+            let h = if let RhaiMsg::Int(i) = fh_wh.recv().expect(receive_err) {
+                i
+            } else {
+                panic!("Editimg: rhai thread expected height but received otherwise.")
+            };
+            WH {
+                w, h
             }
         })
-        .register_fn("crop", move |s: i64, d: i64, px: i64, py: i64, qx: i64, qy: i64| -> i64{
+        .register_fn("crop", move |s: i64, d: i64, px: i64, py: i64, qx: i64, qy: i64| -> i64 {
             th_crop.send(HostMsg::Crop(s, d, px, py, qx, qy)).expect(send_err);
-            crop_from_host.recv().expect(receive_err)
+            if let RhaiMsg::Int(i) = fh_crop.recv().expect(receive_err) {
+                i
+            } else {
+                panic!("Editimg: rhai thread expected crop buffer but received otherwise.")
+            }
         })
-        .register_fn("save", move |s: i64, p: String|{
+        .register_fn("save", move |s: i64, p: String| {
             th_save.send(HostMsg::Save(s, p)).expect(send_err);
         })
     ;

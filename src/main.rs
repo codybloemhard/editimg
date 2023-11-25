@@ -38,7 +38,7 @@ pub fn main() -> Result<(), String> {
     let (
         host_portals,
         RhaiPortals{
-            from_rhai, input_to_rhai, int_to_rhai, crop_to_rhai,
+            from_rhai, mut to_rhai,
         },
     ) = create_channels();
     let (to_host, from_thread) = mpsc::channel();
@@ -146,14 +146,14 @@ pub fn main() -> Result<(), String> {
 
         if let Some(pt) = polls.iter().next() {
             match pt {
-                PollType::Input => if let Some(e) = inputs.pop_front() {
-                    input_to_rhai.send(e).map_err(|e| e.to_string())?;
+                PollType::Input => if let Some(i) = inputs.pop_front() {
+                    to_rhai.send(RhaiMsg::Input(i)).map_err(|_| "Editimg: cannot push input")?;
                     polls.pop_front();
                 },
                 PollType::WH => {
                     let (w, h) = window.get_wh();
-                    int_to_rhai.send(w as i64).map_err(|e| e.to_string())?;
-                    int_to_rhai.send(h as i64).map_err(|e| e.to_string())?;
+                    to_rhai.send(RhaiMsg::Int(w as i64)).map_err(|_| "Editimg: cannot push width")?;
+                    to_rhai.send(RhaiMsg::Int(h as i64)).map_err(|_| "Editimg: cannot push height")?;
                     polls.pop_front();
                 },
                 PollType::Crop(s, d, px, py, qx, qy) => {
@@ -168,8 +168,8 @@ pub fn main() -> Result<(), String> {
                         images[d] = c;
                         d
                     };
-                    crop_to_rhai.send(d as i64).map_err(|e| e.to_string())?;
-                    if d == 0{
+                    to_rhai.send(RhaiMsg::Int(d as i64)).map_err(|_| "Editimg: cannot push crop")?;
+                    if d == 0 {
                         window.set_texture(&images[0], &mut timer)?;
                         window.redraw_texture()?;
                         drawn = true;
@@ -186,8 +186,7 @@ pub fn main() -> Result<(), String> {
 
         if die {
             // do not yield error on purpose: channel maybe closed, and that is alright.
-            let _ = input_to_rhai.send(Input::key("termination".to_string()));
-            let _ = int_to_rhai.send(-1);
+            let _ = to_rhai.send(RhaiMsg::Killed).map_err(|_| "Editimg: cannot push die signal");
             break;
         }
 
