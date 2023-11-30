@@ -113,6 +113,7 @@ pub fn create_channels() -> (HostPortals, RhaiPortals) {
 
 pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
     let mut engine = Engine::new();
+    engine.set_max_expr_depths(50, 50);
 
     let HostPortals{
         to_host, from_host,

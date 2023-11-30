@@ -25,6 +25,11 @@ use std::{
     path::PathBuf,
 };
 
+use rhai::{
+    Module,
+    Scope,
+};
+
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
@@ -32,7 +37,6 @@ struct Args {
 }
 
 pub fn main() -> Result<(), String> {
-
     let args = Args::parse();
 
     let (
@@ -43,19 +47,40 @@ pub fn main() -> Result<(), String> {
     ) = create_channels();
     let (to_host, from_thread) = mpsc::channel();
 
-    let mut fpath = sio::get_home().unwrap();
-    fpath.push(".config/editimg/crop.rhai.rs");
-    let rhai_code = sio::read_file_into_string(&fpath).unwrap();
+    let mut lpath = sio::get_home().unwrap();
+    let mut rpath = lpath.clone();
+    lpath.push(".config/editimg/lib.rhai.rs");
+    rpath.push(".config/editimg/crop.rhai.rs");
+    let lib_code = sio::read_file_into_string(&lpath).unwrap();
+    let run_code = sio::read_file_into_string(&rpath).unwrap();
 
     std::thread::spawn(move || {
-        let engine = construct_rhai_engine(host_portals);
-        match engine.compile(&rhai_code) {
+        let mut engine = construct_rhai_engine(host_portals);
+        match engine.compile(&lib_code) {
+            Ok(ast) => {
+                match Module::eval_ast_as_new(Scope::new(), &ast, &engine) {
+                    Ok(module) => {
+                        engine.register_global_module(module.into());
+                    },
+                    Err(e) => {
+                        to_host.send(Some(e.to_string()))
+                            .expect("Editimg: compilation verification send error");
+                    },
+                }
+            },
+            Err(e) => {
+                to_host.send(Some(e.to_string()))
+                    .expect("Editimg: compilation verification send error");
+            },
+        }
+        match engine.compile(&run_code) {
             Ok(ast) => {
                 to_host.send(None).expect("Editimg: compilation verification send error");
                 engine.run_ast(&ast).expect("Editimg: rhai run error");
             },
             Err(e) => {
-                to_host.send(Some(e)).expect("Editimg: compilation verification send error");
+                to_host.send(Some(e.to_string()))
+                    .expect("Editimg: compilation verification send error");
             },
         }
     });
