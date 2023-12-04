@@ -1,4 +1,5 @@
 use rhai::Engine;
+use sdl2::keyboard::Mod;
 
 use std::sync::mpsc;
 
@@ -58,15 +59,32 @@ pub struct Input {
     pub v: f32,
     pub x: i32,
     pub y: i32,
+    pub shift: bool,
+    pub control: bool,
+    pub alt: bool,
+    pub nummod: bool,
+    pub capsmod: bool,
 }
 
 impl Input {
     pub fn click(c: (f32, f32, i32, i32), key: String) -> Self {
-        Self { is_click: true, key, u: c.0, v: c.1, x: c.2, y: c.3 }
+        Self {
+            is_click: true, key, u: c.0, v: c.1, x: c.2, y: c.3,
+            shift: false, control: false, alt: false, nummod: false, capsmod: false,
+        }
     }
 
-    pub fn key(key: String) -> Self {
-        Self { is_click: false, key, u: 0.0, v: 0.0, x: 0, y: 0 }
+    pub fn key(key: String, keymod: Mod) -> Self {
+        let shift = keymod.contains(Mod::LSHIFTMOD) || keymod.contains(Mod::RSHIFTMOD);
+        let control = keymod.contains(Mod::LCTRLMOD) || keymod.contains(Mod::RCTRLMOD);
+        let alt = keymod.contains(Mod::LALTMOD) || keymod.contains(Mod::RALTMOD);
+        let nummod = keymod.contains(Mod::NUMMOD);
+        let capsmod = keymod.contains(Mod::CAPSMOD);
+
+        Self {
+            is_click: false, key, u: 0.0, v: 0.0, x: 0, y: 0,
+            shift, control, alt, nummod, capsmod,
+        }
     }
 
     fn get_is_click(&mut self) -> bool { self.is_click }
@@ -75,6 +93,11 @@ impl Input {
     fn get_v(&mut self) -> f64 { self.v as f64 }
     fn get_x(&mut self) -> i64 { self.x as i64 }
     fn get_y(&mut self) -> i64 { self.y as i64 }
+    fn get_shift(&mut self) -> bool { self.shift }
+    fn get_control(&mut self) -> bool { self.control }
+    fn get_alt(&mut self) -> bool { self.alt }
+    fn get_nummod(&mut self) -> bool { self.nummod }
+    fn get_capsmod(&mut self) -> bool { self.capsmod }
 }
 
 #[derive(Debug, Clone)]
@@ -125,7 +148,12 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
         .register_get("u", Input::get_u)
         .register_get("v", Input::get_v)
         .register_get("x", Input::get_x)
-        .register_get("y", Input::get_y);
+        .register_get("y", Input::get_y)
+        .register_get("shift", Input::get_shift)
+        .register_get("control", Input::get_control)
+        .register_get("alt", Input::get_alt)
+        .register_get("nummod", Input::get_nummod)
+        .register_get("capsmod", Input::get_capsmod);
     engine.register_type_with_name::<WH>("WH")
         .register_get("w", WH::get_w)
         .register_get("h", WH::get_h);

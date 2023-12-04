@@ -11,6 +11,7 @@ fn select(step, square) {
     } else {
         step /= 2;
     }
+    let bstep = step;
 
     while true {
         let opx = px;
@@ -19,6 +20,11 @@ fn select(step, square) {
         let oqy = qy;
         let e = get_input_event();
         if e.key == "termination" { break; }
+        if e.shift {
+            step = 1;
+        } else {
+            step = bstep;
+        }
         if e.is_click {
             if e.key == "left" && !square {
                 px = e.x;

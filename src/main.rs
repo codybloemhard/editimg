@@ -158,8 +158,8 @@ pub fn main() -> Result<(), String> {
                     window.resize_redraw(winw, winh)?;
                     println!("Resizing: {:?}ms", timer.elapsed());
                 },
-                Event::KeyDown { keycode: Some(kc), .. } => {
-                    inputs.push_back(Input::key(format!("{:?}", kc).to_lowercase()));
+                Event::KeyDown { keycode: Some(kc), keymod, .. } => {
+                    inputs.push_back(Input::key(format!("{:?}", kc).to_lowercase(), keymod));
                 },
                 Event::MouseButtonDown{ mouse_btn, clicks: 1, x, y, .. } => {
                     let button = format!("{:?}", mouse_btn).to_lowercase();
