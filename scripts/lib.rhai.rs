@@ -109,3 +109,12 @@ fn select(step, square) {
     return [px, py, qx, qy];
 }
 
+fn kill_on(key) {
+    while true {
+        let e = get_input_event();
+        if e.key == key {
+            kill();
+        }
+    }
+}
+

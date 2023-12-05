@@ -34,6 +34,7 @@ use rhai::{
 #[clap(author, version, about, long_about = None)]
 struct Args {
     input: PathBuf,
+    command: String,
 }
 
 pub fn main() -> Result<(), String> {
@@ -41,18 +42,21 @@ pub fn main() -> Result<(), String> {
 
     let (
         host_portals,
-        RhaiPortals{
+        RhaiPortals {
             from_rhai, mut to_rhai,
         },
     ) = create_channels();
     let (to_host, from_thread) = mpsc::channel();
 
-    let mut lpath = sio::get_home().unwrap();
+    let mut lpath = sio::get_home().vital("Editimg: could not get home directory");
     let mut rpath = lpath.clone();
     lpath.push(".config/editimg/lib.rhai.rs");
-    rpath.push(".config/editimg/crop.rhai.rs");
-    let lib_code = sio::read_file_into_string(&lpath).unwrap();
-    let run_code = sio::read_file_into_string(&rpath).unwrap();
+    rpath.push(".config/editimg");
+    rpath.push(args.command);
+    rpath.set_extension("rhai.rs");
+    println!("{:?}", rpath);
+    let lib_code = sio::read_file_into_string(&lpath).vital("Editimg: could not load library");
+    let run_code = sio::read_file_into_string(&rpath).vital("Editimg: could not load command");
 
     std::thread::spawn(move || {
         let mut engine = construct_rhai_engine(host_portals);
@@ -85,7 +89,7 @@ pub fn main() -> Result<(), String> {
         }
     });
 
-    if let Some(e) = from_thread.recv().expect("Editimg: compilation verification receive error") {
+    if let Some(e) = from_thread.recv().vital("Editimg: compilation verification receive error") {
         println!("Rhai Compile error: {}", e);
         return Err("Editimg: could not compile, aborting".to_string());
     }
@@ -228,5 +232,21 @@ fn img_crop(px: i64, py: i64, qx: i64, qy: i64) -> (u32, u32, u32, u32) {
     let nqx = px.max(qx).max(0) as u32;
     let nqy = py.max(qy).max(0) as u32;
     (npx, npy, nqx, nqy)
+}
+
+trait Vital<T> {
+    fn vital(self, msg: &str) -> T;
+}
+
+impl<T, U: std::fmt::Display> Vital<T> for Result<T, U> {
+    fn vital(self, msg: &str) -> T {
+        match self {
+            Ok(res) => res,
+            Err(err) => {
+                println!("{msg}: {err}");
+                std::process::exit(-1);
+            },
+        }
+    }
 }
 
