@@ -197,7 +197,7 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
             if let RhaiMsg::Input(input) = fh_input.recv().expect(receive_err) {
                 input
             } else {
-                panic!("Editimg: rhai thread expected input but received otherwise.")
+                quit("Editimg: rhai thread expected input but received otherwise.");
             }
         })
         .register_fn("get_wh", move || -> WH {
@@ -205,12 +205,12 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
             let w = if let RhaiMsg::Int(i) = fh_wh.recv().expect(receive_err) {
                 i
             } else {
-                panic!("Editimg: rhai thread expected width but received otherwise.")
+                quit("Editimg: rhai thread expected width but received otherwise.");
             };
             let h = if let RhaiMsg::Int(i) = fh_wh.recv().expect(receive_err) {
                 i
             } else {
-                panic!("Editimg: rhai thread expected height but received otherwise.")
+                quit("Editimg: rhai thread expected height but received otherwise.");
             };
             WH {
                 w, h
@@ -221,7 +221,7 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
             if let RhaiMsg::Int(i) = fh_crop.recv().expect(receive_err) {
                 i
             } else {
-                panic!("Editimg: rhai thread expected crop buffer but received otherwise.")
+                quit("Editimg: rhai thread expected crop buffer but received otherwise.");
             }
         })
         .register_fn("save", move |s: i64, p: String| {
@@ -231,3 +231,9 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
 
     engine
 }
+
+fn quit(msg: &str) -> ! {
+    println!("{msg}");
+    std::process::exit(0)
+}
+
