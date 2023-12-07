@@ -14,6 +14,11 @@ pub enum HostMsg {
     DrawRectXY(RectXY),
     Crop(i64, i64, i64, i64, i64, i64),
     Save(i64, String),
+    FlipH(i64),
+    FlipV(i64),
+    Rot90(i64),
+    Rot180(i64),
+    Rot270(i64),
 }
 
 #[derive(Debug, Clone)]
@@ -169,6 +174,11 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
     let th_wh = to_host.clone();
     let th_crop = to_host.clone();
     let th_save = to_host.clone();
+    let th_fliph = to_host.clone();
+    let th_flipv = to_host.clone();
+    let th_rot90 = to_host.clone();
+    let th_rot180 = to_host.clone();
+    let th_rot270 = to_host.clone();
 
     let fh_input = from_host.clone();
     let fh_wh = from_host.clone();
@@ -226,6 +236,21 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
         })
         .register_fn("save", move |s: i64, p: String| {
             th_save.send(HostMsg::Save(s, p)).expect(send_err);
+        })
+        .register_fn("fliph", move |s: i64| {
+            th_fliph.send(HostMsg::FlipH(s)).expect(send_err);
+        })
+        .register_fn("flipv", move |s: i64| {
+            th_flipv.send(HostMsg::FlipV(s)).expect(send_err);
+        })
+        .register_fn("rotate90", move |s: i64| {
+            th_rot90.send(HostMsg::Rot90(s)).expect(send_err);
+        })
+        .register_fn("rotate180", move |s: i64| {
+            th_rot180.send(HostMsg::Rot180(s)).expect(send_err);
+        })
+        .register_fn("rotate270", move |s: i64| {
+            th_rot270.send(HostMsg::Rot270(s)).expect(send_err);
         })
     ;
 

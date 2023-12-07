@@ -107,10 +107,10 @@ pub fn main() -> Result<(), String> {
     window.set_texture(&img, &mut timer)?;
 
     enum PollType {
-        Input,
-        WH,
+        Input, WH,
         Crop(i64, i64, i64, i64, i64, i64),
         Save(i64, String),
+        FlipH(i64), FlipV(i64), Rot90(i64), Rot180(i64), Rot270(i64),
     }
 
     let mut polls = VecDeque::new();
@@ -121,6 +121,7 @@ pub fn main() -> Result<(), String> {
 
     loop {
         let mut drawn = false;
+        let mut redraw = false;
         let mut die = false;
 
         for rhai_call in from_rhai.try_iter(){
@@ -138,6 +139,11 @@ pub fn main() -> Result<(), String> {
                 DrawRectXY(r) => rects_xy.push(r),
                 Crop(s, d, px, py, qx, qy) => polls.push_back(PollType::Crop(s, d, px, py, qx, qy)),
                 Save(s, p) => polls.push_back(PollType::Save(s, p)),
+                FlipH(i) => polls.push_back(PollType::FlipH(i)),
+                FlipV(i) => polls.push_back(PollType::FlipV(i)),
+                Rot90(i) => polls.push_back(PollType::Rot90(i)),
+                Rot180(i) => polls.push_back(PollType::Rot180(i)),
+                Rot270(i) => polls.push_back(PollType::Rot270(i)),
             }
             if rects_uv.len() + rects_xy.len() > 0 { drawn = true; }
             while let Some(r) = rects_uv.pop(){ window.draw_rect_uv(r)?; }
@@ -174,16 +180,19 @@ pub fn main() -> Result<(), String> {
         }
 
         if let Some(pt) = polls.iter().next() {
+            let mut pop = true;
             match pt {
-                PollType::Input => if let Some(i) = inputs.pop_front() {
-                    to_rhai.send(RhaiMsg::Input(i)).map_err(|_| "Editimg: cannot push input")?;
-                    polls.pop_front();
+                PollType::Input => {
+                    if let Some(i) = inputs.pop_front() {
+                        to_rhai.send(RhaiMsg::Input(i)).map_err(|_| "Editimg: cannot push input")?;
+                    } else {
+                        pop = false;
+                    }
                 },
                 PollType::WH => {
                     let (w, h) = window.get_wh();
                     to_rhai.send(RhaiMsg::Int(w as i64)).map_err(|_| "Editimg: cannot push width")?;
                     to_rhai.send(RhaiMsg::Int(h as i64)).map_err(|_| "Editimg: cannot push height")?;
-                    polls.pop_front();
                 },
                 PollType::Crop(s, d, px, py, qx, qy) => {
                     let (px, py, qx, qy) = img_crop(*px, *py, *qx, *qy);
@@ -198,18 +207,40 @@ pub fn main() -> Result<(), String> {
                         d
                     };
                     to_rhai.send(RhaiMsg::Int(d as i64)).map_err(|_| "Editimg: cannot push crop")?;
-                    if d == 0 {
-                        window.set_texture(&images[0], &mut timer)?;
-                        window.redraw_texture()?;
-                        drawn = true;
-                    }
-                    polls.pop_front();
+                    if d == 0 { redraw = true; }
                 },
                 PollType::Save(source, path) => {
                     let s = ((*source).max(0) as usize).min(images.len() - 1);
                     images[s].save(path).map_err(|e| e.to_string())?;
-                    polls.pop_front();
                 },
+                PollType::FlipH(image) => {
+                    let i = ((*image).max(0) as usize).min(images.len() - 1);
+                    images[i] = images[i].fliph();
+                    if i == 0 { redraw = true; }
+                },
+                PollType::FlipV(image) => {
+                    let i = ((*image).max(0) as usize).min(images.len() - 1);
+                    images[i] = images[i].flipv();
+                    if i == 0 { redraw = true; }
+                },
+                PollType::Rot90(image) => {
+                    let i = ((*image).max(0) as usize).min(images.len() - 1);
+                    images[i] = images[i].rotate90();
+                    if i == 0 { redraw = true; }
+                },
+                PollType::Rot180(image) => {
+                    let i = ((*image).max(0) as usize).min(images.len() - 1);
+                    images[i] = images[i].rotate180();
+                    if i == 0 { redraw = true; }
+                },
+                PollType::Rot270(image) => {
+                    let i = ((*image).max(0) as usize).min(images.len() - 1);
+                    images[i] = images[i].rotate270();
+                    if i == 0 { redraw = true; }
+                },
+            }
+            if pop {
+                polls.pop_front();
             }
         }
 
@@ -219,7 +250,14 @@ pub fn main() -> Result<(), String> {
             break;
         }
 
-        if drawn { window.redraw(); }
+        if redraw {
+            window.set_texture(&images[0], &mut timer)?;
+            window.redraw_texture()?;
+            drawn = true;
+        }
+        if drawn {
+            window.redraw();
+        }
     }
 
     println!("Editimg: finished.");
