@@ -171,9 +171,6 @@ pub fn main() -> Result<(), String> {
                     window.redraw_texture()?;
                     drawn = true;
                 },
-                DebugI64(i) => {
-                    println!("{:?}", i);
-                },
                 DrawRectUV(r) => {
                     rects_uv.push(r.clone());
                 },

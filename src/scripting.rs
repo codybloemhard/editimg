@@ -8,7 +8,6 @@ pub enum HostMsg {
     Kill,
     GetInputEvent,
     GetWH,
-    DebugI64(i64),
     ClearRects,
     DrawRectUV(RectUV),
     DrawRectXY(RectXY),
@@ -166,30 +165,19 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
     let receive_err = "Editimg: rhai thread could not receive from host.";
     let send_err = "Editimg: rhai thread could not send to host.";
 
-    let th_debug = to_host.clone();
-    let th_input = to_host.clone();
-    let th_ruv = to_host.clone();
-    let th_rxy = to_host.clone();
-    let th_clear = to_host.clone();
-    let th_wh = to_host.clone();
-    let th_crop = to_host.clone();
-    let th_save = to_host.clone();
-    let th_fliph = to_host.clone();
-    let th_flipv = to_host.clone();
-    let th_rot90 = to_host.clone();
-    let th_rot180 = to_host.clone();
-    let th_rot270 = to_host.clone();
+    macro_rules! def_ths {
+        ( $( $name:ident ), * ) => { $( let $name = to_host.clone(); )* }
+    }
+    def_ths!(
+        th_input, th_ruv, th_rxy, th_clear, th_wh, th_crop, th_save, th_fliph, th_flipv, th_rot90,
+        th_rot180, th_rot270
+    );
 
-    let fh_input = from_host.clone();
-    let fh_wh = from_host.clone();
-    let fh_crop = from_host.clone();
+    let (fh_input, fh_wh, fh_crop) = (from_host.clone(), from_host.clone(), from_host.clone());
 
     engine
         .register_fn("kill", move || {
             to_host.send(HostMsg::Kill).expect(send_err);
-        })
-        .register_fn("put", move |v: i64| {
-            th_debug.send(HostMsg::DebugI64(v)).expect(send_err);
         })
         .register_fn("clear_rects", move || {
             th_clear.clone().send(HostMsg::ClearRects).expect(send_err);
