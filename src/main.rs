@@ -15,7 +15,10 @@ use sdl2::{
 
 use simpleio as sio;
 
-use image::io::Reader as IR;
+use image::{
+    io::Reader as IR,
+    DynamicImage,
+};
 
 use clap::Parser;
 
@@ -221,6 +224,53 @@ pub fn main() -> Result<(), String> {
                     images[i] = images[i].rotate270();
                     if i == 0 { redraw = true; }
                 },
+                Invert(src, dst) => {
+                    let s = img_index(src, &images);
+                    if src == dst {
+                        images[s].invert();
+                        if s == 0 { redraw = true; }
+                    } else if *dst < 0 {
+                        let mut c = images[s].clone();
+                        c.invert();
+                        images.push(c);
+                    } else {
+                        let d = img_index(dst, &images);
+                        images[d] = images[s].clone();
+                        images[d].invert();
+                        if d == 0 { redraw = true; }
+                    }
+                },
+                Blur(src, dst, sigma) => {
+                    let s = img_index(src, &images);
+                    let img = images[s].blur(*sigma as f32);
+                    put_img(dst, img, &mut images, &mut redraw);
+                },
+                Unsharpen(src, dst, sigma, threshold) => {
+                    let s = img_index(src, &images);
+                    let img = images[s].unsharpen(*sigma as f32, *threshold as i32);
+                    put_img(dst, img, &mut images, &mut redraw);
+                },
+                Filter3x3(src, dst, fltr) => {
+                    let s = img_index(src, &images);
+                    let f = fltr.iter().map(|v| *v as f32).collect::<Vec<_>>();
+                    let img = images[s].filter3x3(&f);
+                    put_img(dst, img, &mut images, &mut redraw);
+                },
+                AdjustContrast(src, dst, c) => {
+                    let s = img_index(src, &images);
+                    let img = images[s].adjust_contrast(*c as f32);
+                    put_img(dst, img, &mut images, &mut redraw);
+                },
+                Brighten(src, dst, v) => {
+                    let s = img_index(src, &images);
+                    let img = images[s].brighten(*v as i32);
+                    put_img(dst, img, &mut images, &mut redraw);
+                },
+                Huerotate(src, dst, v) => {
+                    let s = img_index(src, &images);
+                    let img = images[s].huerotate(*v as i32);
+                    put_img(dst, img, &mut images, &mut redraw);
+                },
             }
             if pop {
                 polls.pop_front();
@@ -253,7 +303,17 @@ pub fn main() -> Result<(), String> {
     Ok(())
 }
 
-fn img_index(i: &i64, images: &Vec<image::DynamicImage>) -> usize {
+fn put_img(dst: &i64, img: DynamicImage, images: &mut Vec<DynamicImage>, redraw: &mut bool) {
+    if *dst < 0 {
+        images.push(img);
+    } else {
+        let d = img_index(dst, images);
+        images[d] = img;
+        if d == 0 { *redraw = true; }
+    }
+}
+
+fn img_index(i: &i64, images: &Vec<DynamicImage>) -> usize {
     ((*i).max(0) as usize).min(images.len() - 1)
 }
 

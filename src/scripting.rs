@@ -18,6 +18,13 @@ pub enum HostMsg {
     Rot90(i64),
     Rot180(i64),
     Rot270(i64),
+    Invert(i64, i64),
+    Blur(i64, i64, f64),
+    Unsharpen(i64, i64, f64, i64),
+    Filter3x3(i64, i64, [f64; 9]),
+    AdjustContrast(i64, i64, f64),
+    Brighten(i64, i64, i64),
+    Huerotate(i64, i64, i64),
 }
 
 #[derive(Debug, Clone)]
@@ -42,7 +49,7 @@ pub struct RectXY {
     pub qy: i32,
 }
 
-impl RectXY{
+impl RectXY {
     fn new(px: i32, py: i32, qx: i32, qy: i32) -> Self {
         Self{ px, py, qx, qy }
     }
@@ -170,7 +177,8 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
     }
     def_ths!(
         th_input, th_ruv, th_rxy, th_clear, th_wh, th_crop, th_save, th_fliph, th_flipv, th_rot90,
-        th_rot180, th_rot270
+        th_rot180, th_rot270, th_invert, th_blur, th_unsharpen, th_filter3x3, th_adjust_contrast,
+        th_brighten, th_huerotate
     );
 
     let (fh_input, fh_wh, fh_crop) = (from_host.clone(), from_host.clone(), from_host.clone());
@@ -239,6 +247,27 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
         })
         .register_fn("rotate270", move |s: i64| {
             th_rot270.send(HostMsg::Rot270(s)).expect(send_err);
+        })
+        .register_fn("invert", move |s: i64, d: i64| {
+            th_invert.send(HostMsg::Invert(s, d)).expect(send_err);
+        })
+        .register_fn("blur", move |s: i64, d: i64, sigma: f64| {
+            th_blur.send(HostMsg::Blur(s, d, sigma)).expect(send_err);
+        })
+        .register_fn("unsharpen", move |s: i64, d: i64, sigma: f64, threshold: i64| {
+            th_unsharpen.send(HostMsg::Unsharpen(s, d, sigma, threshold)).expect(send_err);
+        })
+        .register_fn("filter3x3", move |s: i64, d: i64, filter: [f64; 9]| {
+            th_filter3x3.send(HostMsg::Filter3x3(s, d, filter)).expect(send_err);
+        })
+        .register_fn("adjust_contrast", move |s: i64, d: i64, c: f64| {
+            th_adjust_contrast.send(HostMsg::AdjustContrast(s, d, c)).expect(send_err);
+        })
+        .register_fn("brighten", move |s: i64, d: i64, v: i64| {
+            th_brighten.send(HostMsg::Brighten(s, d, v)).expect(send_err);
+        })
+        .register_fn("huerotate", move |s: i64, d: i64, v: i64| {
+            th_huerotate.send(HostMsg::Huerotate(s, d, v)).expect(send_err);
         })
     ;
 
