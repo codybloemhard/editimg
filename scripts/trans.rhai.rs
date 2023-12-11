@@ -14,5 +14,9 @@ while true {
         flipv(0);
     } else if e.key == "return" {
         save(0, "transformed.jpg");
+        break;
     }
 }
+
+kill();
+
