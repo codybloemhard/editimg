@@ -18,6 +18,7 @@ use simpleio as sio;
 use image::{
     io::Reader as IR,
     DynamicImage,
+    imageops::FilterType,
 };
 
 use clap::Parser;
@@ -271,6 +272,31 @@ pub fn main() -> Result<(), String> {
                     let img = images[s].huerotate(*v as i32);
                     put_img(dst, img, &mut images, &mut redraw);
                 },
+                Resize(src, dst, w, h, ft) => {
+                    let s = img_index(src, &images);
+                    let img = images[s].resize(clamp(w), clamp(h), filtertype(ft));
+                    put_img(dst, img, &mut images, &mut redraw);
+                },
+                ResizeExact(src, dst, w, h, ft) => {
+                    let s = img_index(src, &images);
+                    let img = images[s].resize_exact(clamp(w), clamp(h), filtertype(ft));
+                    put_img(dst, img, &mut images, &mut redraw);
+                },
+                ResizeFill(src, dst, w, h, ft) => {
+                    let s = img_index(src, &images);
+                    let img = images[s].resize_to_fill(clamp(w), clamp(h), filtertype(ft));
+                    put_img(dst, img, &mut images, &mut redraw);
+                },
+                Thumbnail(src, dst, w, h) => {
+                    let s = img_index(src, &images);
+                    let img = images[s].thumbnail(clamp(w), clamp(h));
+                    put_img(dst, img, &mut images, &mut redraw);
+                },
+                ThumbnailExact(src, dst, w, h) => {
+                    let s = img_index(src, &images);
+                    let img = images[s].thumbnail_exact(clamp(w), clamp(h));
+                    put_img(dst, img, &mut images, &mut redraw);
+                },
             }
             if pop {
                 polls.pop_front();
@@ -301,6 +327,23 @@ pub fn main() -> Result<(), String> {
 
     println!("Editimg: finished.");
     Ok(())
+}
+
+fn filtertype(f: &str) -> FilterType {
+    match f.to_lowercase().as_ref() {
+        "nearest" => FilterType::Nearest,
+        "triangle" => FilterType::Triangle,
+        "catmullrom" => FilterType::CatmullRom,
+        "catmull-rom" => FilterType::CatmullRom,
+        "gaussian" => FilterType::Gaussian,
+        "lanczos3" => FilterType::Lanczos3,
+        "lanczos" => FilterType::Lanczos3,
+        _ => FilterType::Triangle,
+    }
+}
+
+fn clamp(v: &i64) -> u32 {
+    (*v).max(0).min(u32::MAX as i64) as u32
 }
 
 fn put_img(dst: &i64, img: DynamicImage, images: &mut Vec<DynamicImage>, redraw: &mut bool) {

@@ -25,6 +25,11 @@ pub enum HostMsg {
     AdjustContrast(i64, i64, f64),
     Brighten(i64, i64, i64),
     Huerotate(i64, i64, i64),
+    Resize(i64, i64, i64, i64, String),
+    ResizeExact(i64, i64, i64, i64, String),
+    ResizeFill(i64, i64, i64, i64, String),
+    Thumbnail(i64, i64, i64, i64),
+    ThumbnailExact(i64, i64, i64, i64),
 }
 
 #[derive(Debug, Clone)]
@@ -178,7 +183,8 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
     def_ths!(
         th_input, th_ruv, th_rxy, th_clear, th_wh, th_crop, th_save, th_fliph, th_flipv, th_rot90,
         th_rot180, th_rot270, th_invert, th_blur, th_unsharpen, th_filter3x3, th_adjust_contrast,
-        th_brighten, th_huerotate
+        th_brighten, th_huerotate, th_resize, th_resize_exact, th_resize_fill,
+        th_thumbnail, th_thumbnail_exact
     );
 
     let (fh_input, fh_wh, fh_crop) = (from_host.clone(), from_host.clone(), from_host.clone());
@@ -268,6 +274,21 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
         })
         .register_fn("huerotate", move |s: i64, d: i64, v: i64| {
             th_huerotate.send(HostMsg::Huerotate(s, d, v)).expect(send_err);
+        })
+        .register_fn("resize", move |s: i64, d: i64, w: i64, h: i64, f: String| {
+            th_resize.send(HostMsg::Resize(s, d, w, h, f)).expect(send_err);
+        })
+        .register_fn("resize_exact", move |s: i64, d: i64, w: i64, h: i64, f: String| {
+            th_resize_exact.send(HostMsg::ResizeExact(s, d, w, h, f)).expect(send_err);
+        })
+        .register_fn("resize_fill", move |s: i64, d: i64, w: i64, h: i64, f: String| {
+            th_resize_fill.send(HostMsg::ResizeFill(s, d, w, h, f)).expect(send_err);
+        })
+        .register_fn("thumbnail", move |s: i64, d: i64, w: i64, h: i64| {
+            th_thumbnail.send(HostMsg::Thumbnail(s, d, w, h)).expect(send_err);
+        })
+        .register_fn("thumbnail_exact", move |s: i64, d: i64, w: i64, h: i64| {
+            th_thumbnail_exact.send(HostMsg::ThumbnailExact(s, d, w, h)).expect(send_err);
         })
     ;
 
