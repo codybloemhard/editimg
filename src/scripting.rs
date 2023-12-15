@@ -13,11 +13,11 @@ pub enum HostMsg {
     DrawRectXY(RectXY),
     Crop(i64, i64, i64, i64, i64, i64),
     Save(i64, String),
-    FlipH(i64),
-    FlipV(i64),
-    Rot90(i64),
-    Rot180(i64),
-    Rot270(i64),
+    FlipH(i64, i64),
+    FlipV(i64, i64),
+    Rot90(i64, i64),
+    Rot180(i64, i64),
+    Rot270(i64, i64),
     Invert(i64, i64),
     Blur(i64, i64, f64),
     Unsharpen(i64, i64, f64, i64),
@@ -187,9 +187,9 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
         th_thumbnail, th_thumbnail_exact
     );
     def_clones!( from_host,
-        fh_input, fh_wh, fh_crop, fh_invert, fh_blur, fh_unsharpen, fh_filter, fh_contrast,
-        fh_brighten, fh_huerotate, fh_resize, fh_resize_exact, fh_resize_fill, fh_thumbnail,
-        fh_thumbnail_exact
+        fh_input, fh_wh, fh_crop, fh_fliph, fh_flipv, fh_rotate90, fh_rotate180, fh_rotate270,
+        fh_invert, fh_blur, fh_unsharpen, fh_filter, fh_contrast, fh_brighten, fh_huerotate,
+        fh_resize, fh_resize_exact, fh_resize_fill, fh_thumbnail, fh_thumbnail_exact
     );
 
     macro_rules! recv_buf {
@@ -245,20 +245,25 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
         .register_fn("save", move |s: i64, p: String| {
             th_save.send(HostMsg::Save(s, p)).expect(send_err);
         })
-        .register_fn("fliph", move |s: i64| {
-            th_fliph.send(HostMsg::FlipH(s)).expect(send_err);
+        .register_fn("fliph", move |s: i64, d: i64| {
+            th_fliph.send(HostMsg::FlipH(s, d)).expect(send_err);
+            recv_buf!(fh_fliph)
         })
-        .register_fn("flipv", move |s: i64| {
-            th_flipv.send(HostMsg::FlipV(s)).expect(send_err);
+        .register_fn("flipv", move |s: i64, d: i64| {
+            th_flipv.send(HostMsg::FlipV(s, d)).expect(send_err);
+            recv_buf!(fh_flipv)
         })
-        .register_fn("rotate90", move |s: i64| {
-            th_rot90.send(HostMsg::Rot90(s)).expect(send_err);
+        .register_fn("rotate90", move |s: i64, d: i64| {
+            th_rot90.send(HostMsg::Rot90(s, d)).expect(send_err);
+            recv_buf!(fh_rotate90)
         })
-        .register_fn("rotate180", move |s: i64| {
-            th_rot180.send(HostMsg::Rot180(s)).expect(send_err);
+        .register_fn("rotate180", move |s: i64, d: i64| {
+            th_rot180.send(HostMsg::Rot180(s, d)).expect(send_err);
+            recv_buf!(fh_rotate180)
         })
-        .register_fn("rotate270", move |s: i64| {
-            th_rot270.send(HostMsg::Rot270(s)).expect(send_err);
+        .register_fn("rotate270", move |s: i64, d: i64| {
+            th_rot270.send(HostMsg::Rot270(s, d)).expect(send_err);
+            recv_buf!(fh_rotate270)
         })
         .register_fn("invert", move |s: i64, d: i64| {
             th_invert.send(HostMsg::Invert(s, d)).expect(send_err);

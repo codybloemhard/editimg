@@ -200,48 +200,39 @@ pub fn main() -> Result<(), String> {
                     let s = img_index(source, &images);
                     images[s].save(path).map_err(|e| e.to_string())?;
                 },
-                FlipH(image) => {
-                    let i = img_index(image, &images);
-                    images[i] = images[i].fliph();
-                    if i == 0 { redraw = true; }
+                FlipH(src, dst) => {
+                    let d = get_img(src, dst, &mut images, &mut redraw);
+                    images[d] = images[d].fliph();
+                    to_rhai.send(RhaiMsg::Int(d as i64))
+                        .map_err(|_| "Editimg: cannot push invert dst")?;
                 },
-                FlipV(image) => {
-                    let i = img_index(image, &images);
-                    images[i] = images[i].flipv();
-                    if i == 0 { redraw = true; }
+                FlipV(src, dst) => {
+                    let d = get_img(src, dst, &mut images, &mut redraw);
+                    images[d] = images[d].flipv();
+                    to_rhai.send(RhaiMsg::Int(d as i64))
+                        .map_err(|_| "Editimg: cannot push invert dst")?;
                 },
-                Rot90(image) => {
-                    let i = img_index(image, &images);
-                    images[i] = images[i].rotate90();
-                    if i == 0 { redraw = true; }
+                Rot90(src, dst) => {
+                    let d = get_img(src, dst, &mut images, &mut redraw);
+                    images[d] = images[d].rotate90();
+                    to_rhai.send(RhaiMsg::Int(d as i64))
+                        .map_err(|_| "Editimg: cannot push invert dst")?;
                 },
-                Rot180(image) => {
-                    let i = img_index(image, &images);
-                    images[i] = images[i].rotate180();
-                    if i == 0 { redraw = true; }
+                Rot180(src, dst) => {
+                    let d = get_img(src, dst, &mut images, &mut redraw);
+                    images[d] = images[d].rotate180();
+                    to_rhai.send(RhaiMsg::Int(d as i64))
+                        .map_err(|_| "Editimg: cannot push invert dst")?;
                 },
-                Rot270(image) => {
-                    let i = img_index(image, &images);
-                    images[i] = images[i].rotate270();
-                    if i == 0 { redraw = true; }
+                Rot270(src, dst) => {
+                    let d = get_img(src, dst, &mut images, &mut redraw);
+                    images[d] = images[d].rotate270();
+                    to_rhai.send(RhaiMsg::Int(d as i64))
+                        .map_err(|_| "Editimg: cannot push invert dst")?;
                 },
                 Invert(src, dst) => {
-                    let s = img_index(src, &images);
-                    let d = if src == dst {
-                        images[s].invert();
-                        s
-                    } else if *dst < 0 {
-                        let mut c = images[s].clone();
-                        c.invert();
-                        images.push(c);
-                        images.len() - 1
-                    } else {
-                        let d = img_index(dst, &images);
-                        images[d] = images[s].clone();
-                        images[d].invert();
-                        d
-                    };
-                    if d == 0 { redraw = true; }
+                    let d = get_img(src, dst, &mut images, &mut redraw);
+                    images[d].invert();
                     to_rhai.send(RhaiMsg::Int(d as i64))
                         .map_err(|_| "Editimg: cannot push invert dst")?;
                 },
@@ -370,6 +361,23 @@ fn filtertype(f: &str) -> FilterType {
 
 fn clamp(v: &i64) -> u32 {
     (*v).max(0).min(u32::MAX as i64) as u32
+}
+
+fn get_img(src: &i64, dst: &i64, images: &mut Vec<DynamicImage>, redraw: &mut bool) -> usize {
+    let s = img_index(src, images);
+    let d = if src == dst {
+        s
+    } else if *dst < 0 {
+        let c = images[s].clone();
+        images.push(c);
+        images.len() - 1
+    } else {
+        let d = img_index(dst, images);
+        images[d] = images[s].clone();
+        d
+    };
+    if d == 0 { *redraw = true; }
+    d
 }
 
 fn put_img(dst: &i64, img: DynamicImage, images: &mut Vec<DynamicImage>, redraw: &mut bool) -> i64 {
