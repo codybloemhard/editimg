@@ -236,6 +236,13 @@ pub fn main() -> Result<(), String> {
                     to_rhai.send(RhaiMsg::Int(d as i64))
                         .map_err(|_| "Editimg: cannot push invert dst")?;
                 },
+                Grayscale(src, dst) => {
+                    let s = img_index(src, &images);
+                    let img = images[s].grayscale();
+                    let d = put_img(dst, img, &mut images, &mut redraw);
+                    to_rhai.send(RhaiMsg::Int(d as i64))
+                        .map_err(|_| "Editimg: cannot push grayscale dst")?;
+                },
                 Blur(src, dst, sigma) => {
                     let s = img_index(src, &images);
                     let img = images[s].blur(*sigma as f32);

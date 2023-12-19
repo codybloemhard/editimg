@@ -19,6 +19,7 @@ pub enum HostMsg {
     Rot180(i64, i64),
     Rot270(i64, i64),
     Invert(i64, i64),
+    Grayscale(i64, i64),
     Blur(i64, i64, f64),
     Unsharpen(i64, i64, f64, i64),
     Filter3x3(i64, i64, [f64; 9]),
@@ -182,14 +183,14 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
     }
     def_clones!( to_host,
         th_input, th_ruv, th_rxy, th_clear, th_wh, th_crop, th_save, th_fliph, th_flipv, th_rot90,
-        th_rot180, th_rot270, th_invert, th_blur, th_unsharpen, th_filter3x3, th_adjust_contrast,
-        th_brighten, th_huerotate, th_resize, th_resize_exact, th_resize_fill,
+        th_rot180, th_rot270, th_invert, th_grayscale, th_blur, th_unsharpen, th_filter3x3,
+        th_adjust_contrast, th_brighten, th_huerotate, th_resize, th_resize_exact, th_resize_fill,
         th_thumbnail, th_thumbnail_exact
     );
     def_clones!( from_host,
         fh_input, fh_wh, fh_crop, fh_fliph, fh_flipv, fh_rotate90, fh_rotate180, fh_rotate270,
-        fh_invert, fh_blur, fh_unsharpen, fh_filter, fh_contrast, fh_brighten, fh_huerotate,
-        fh_resize, fh_resize_exact, fh_resize_fill, fh_thumbnail, fh_thumbnail_exact
+        fh_invert, fh_grayscale, fh_blur, fh_unsharpen, fh_filter, fh_contrast, fh_brighten,
+        fh_huerotate, fh_resize, fh_resize_exact, fh_resize_fill, fh_thumbnail, fh_thumbnail_exact
     );
 
     macro_rules! recv_buf {
@@ -268,6 +269,10 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
         .register_fn("invert", move |s: i64, d: i64| {
             th_invert.send(HostMsg::Invert(s, d)).expect(send_err);
             recv_buf!(fh_invert)
+        })
+        .register_fn("grayscale", move |s: i64, d: i64| {
+            th_grayscale.send(HostMsg::Grayscale(s, d)).expect(send_err);
+            recv_buf!(fh_grayscale)
         })
         .register_fn("blur", move |s: i64, d: i64, sigma: f64| {
             th_blur.send(HostMsg::Blur(s, d, sigma)).expect(send_err);
