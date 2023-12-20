@@ -31,6 +31,9 @@ pub enum HostMsg {
     ResizeFill(i64, i64, i64, i64, String),
     Thumbnail(i64, i64, i64, i64),
     ThumbnailExact(i64, i64, i64, i64),
+    Show(i64),
+    ShowNext,
+    ShowPrev,
 }
 
 #[derive(Debug, Clone)]
@@ -185,12 +188,13 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
         th_input, th_ruv, th_rxy, th_clear, th_wh, th_crop, th_save, th_fliph, th_flipv, th_rot90,
         th_rot180, th_rot270, th_invert, th_grayscale, th_blur, th_unsharpen, th_filter3x3,
         th_adjust_contrast, th_brighten, th_huerotate, th_resize, th_resize_exact, th_resize_fill,
-        th_thumbnail, th_thumbnail_exact
+        th_thumbnail, th_thumbnail_exact, th_show, th_show_next, th_show_prev
     );
     def_clones!( from_host,
         fh_input, fh_wh, fh_crop, fh_fliph, fh_flipv, fh_rotate90, fh_rotate180, fh_rotate270,
         fh_invert, fh_grayscale, fh_blur, fh_unsharpen, fh_filter, fh_contrast, fh_brighten,
-        fh_huerotate, fh_resize, fh_resize_exact, fh_resize_fill, fh_thumbnail, fh_thumbnail_exact
+        fh_huerotate, fh_resize, fh_resize_exact, fh_resize_fill, fh_thumbnail, fh_thumbnail_exact,
+        fh_show, fh_show_next, fh_show_prev
     );
 
     macro_rules! recv_buf {
@@ -317,6 +321,18 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
         .register_fn("thumbnail_exact", move |s: i64, d: i64, w: i64, h: i64| {
             th_thumbnail_exact.send(HostMsg::ThumbnailExact(s, d, w, h)).expect(send_err);
             recv_buf!(fh_thumbnail_exact)
+        })
+        .register_fn("show", move |i: i64| {
+            th_show.send(HostMsg::Show(i)).expect(send_err);
+            recv_buf!(fh_show)
+        })
+        .register_fn("show_next", move || {
+            th_show_next.send(HostMsg::ShowNext).expect(send_err);
+            recv_buf!(fh_show_next)
+        })
+        .register_fn("show_prev", move || {
+            th_show_prev.send(HostMsg::ShowPrev).expect(send_err);
+            recv_buf!(fh_show_prev)
         })
     ;
 

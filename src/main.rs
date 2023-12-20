@@ -115,6 +115,7 @@ pub fn main() -> Result<(), String> {
     let mut rects_uv = Vec::new();
     let mut rects_xy = Vec::new();
     let mut images = vec![img];
+    let mut show = 0;
 
     loop {
         let mut drawn = false;
@@ -194,44 +195,44 @@ pub fn main() -> Result<(), String> {
                         d
                     };
                     to_rhai.send(RhaiMsg::Int(d as i64)).map_err(|_| "Editimg: cannot push crop")?;
-                    if d == 0 { redraw = true; }
+                    if d == show { redraw = true; }
                 },
                 Save(source, path) => {
                     let s = img_index(source, &images);
                     images[s].save(path).map_err(|e| e.to_string())?;
                 },
                 FlipH(src, dst) => {
-                    let d = get_img(src, dst, &mut images, &mut redraw);
+                    let d = get_img(src, dst, &mut images, &mut redraw, &mut show);
                     images[d] = images[d].fliph();
                     to_rhai.send(RhaiMsg::Int(d as i64))
                         .map_err(|_| "Editimg: cannot push invert dst")?;
                 },
                 FlipV(src, dst) => {
-                    let d = get_img(src, dst, &mut images, &mut redraw);
+                    let d = get_img(src, dst, &mut images, &mut redraw, &mut show);
                     images[d] = images[d].flipv();
                     to_rhai.send(RhaiMsg::Int(d as i64))
                         .map_err(|_| "Editimg: cannot push invert dst")?;
                 },
                 Rot90(src, dst) => {
-                    let d = get_img(src, dst, &mut images, &mut redraw);
+                    let d = get_img(src, dst, &mut images, &mut redraw, &mut show);
                     images[d] = images[d].rotate90();
                     to_rhai.send(RhaiMsg::Int(d as i64))
                         .map_err(|_| "Editimg: cannot push invert dst")?;
                 },
                 Rot180(src, dst) => {
-                    let d = get_img(src, dst, &mut images, &mut redraw);
+                    let d = get_img(src, dst, &mut images, &mut redraw, &mut show);
                     images[d] = images[d].rotate180();
                     to_rhai.send(RhaiMsg::Int(d as i64))
                         .map_err(|_| "Editimg: cannot push invert dst")?;
                 },
                 Rot270(src, dst) => {
-                    let d = get_img(src, dst, &mut images, &mut redraw);
+                    let d = get_img(src, dst, &mut images, &mut redraw, &mut show);
                     images[d] = images[d].rotate270();
                     to_rhai.send(RhaiMsg::Int(d as i64))
                         .map_err(|_| "Editimg: cannot push invert dst")?;
                 },
                 Invert(src, dst) => {
-                    let d = get_img(src, dst, &mut images, &mut redraw);
+                    let d = get_img(src, dst, &mut images, &mut redraw, &mut show);
                     images[d].invert();
                     to_rhai.send(RhaiMsg::Int(d as i64))
                         .map_err(|_| "Editimg: cannot push invert dst")?;
@@ -239,21 +240,21 @@ pub fn main() -> Result<(), String> {
                 Grayscale(src, dst) => {
                     let s = img_index(src, &images);
                     let img = images[s].grayscale();
-                    let d = put_img(dst, img, &mut images, &mut redraw);
+                    let d = put_img(dst, img, &mut images, &mut redraw, &mut show);
                     to_rhai.send(RhaiMsg::Int(d as i64))
                         .map_err(|_| "Editimg: cannot push grayscale dst")?;
                 },
                 Blur(src, dst, sigma) => {
                     let s = img_index(src, &images);
                     let img = images[s].blur(*sigma as f32);
-                    let d = put_img(dst, img, &mut images, &mut redraw);
+                    let d = put_img(dst, img, &mut images, &mut redraw, &mut show);
                     to_rhai.send(RhaiMsg::Int(d))
                         .map_err(|_| "Editimg: cannot push blur dst")?;
                 },
                 Unsharpen(src, dst, sigma, threshold) => {
                     let s = img_index(src, &images);
                     let img = images[s].unsharpen(*sigma as f32, *threshold as i32);
-                    let d = put_img(dst, img, &mut images, &mut redraw);
+                    let d = put_img(dst, img, &mut images, &mut redraw, &mut show);
                     to_rhai.send(RhaiMsg::Int(d))
                         .map_err(|_| "Editimg: cannot push unsharpen dst")?;
                 },
@@ -261,65 +262,88 @@ pub fn main() -> Result<(), String> {
                     let s = img_index(src, &images);
                     let f = fltr.iter().map(|v| *v as f32).collect::<Vec<_>>();
                     let img = images[s].filter3x3(&f);
-                    let d = put_img(dst, img, &mut images, &mut redraw);
+                    let d = put_img(dst, img, &mut images, &mut redraw, &mut show);
                     to_rhai.send(RhaiMsg::Int(d))
                         .map_err(|_| "Editimg: cannot push filter dst")?;
                 },
                 AdjustContrast(src, dst, c) => {
                     let s = img_index(src, &images);
                     let img = images[s].adjust_contrast(*c as f32);
-                    let d = put_img(dst, img, &mut images, &mut redraw);
+                    let d = put_img(dst, img, &mut images, &mut redraw, &mut show);
                     to_rhai.send(RhaiMsg::Int(d))
                         .map_err(|_| "Editimg: cannot push contrast dts")?;
                 },
                 Brighten(src, dst, v) => {
                     let s = img_index(src, &images);
                     let img = images[s].brighten(*v as i32);
-                    let d = put_img(dst, img, &mut images, &mut redraw);
+                    let d = put_img(dst, img, &mut images, &mut redraw, &mut show);
                     to_rhai.send(RhaiMsg::Int(d))
                         .map_err(|_| "Editimg: cannot push brighten dst")?;
                 },
                 Huerotate(src, dst, v) => {
                     let s = img_index(src, &images);
                     let img = images[s].huerotate(*v as i32);
-                    let d = put_img(dst, img, &mut images, &mut redraw);
+                    let d = put_img(dst, img, &mut images, &mut redraw, &mut show);
                     to_rhai.send(RhaiMsg::Int(d))
                         .map_err(|_| "Editimg: cannot push huerotate dst")?;
                 },
                 Resize(src, dst, w, h, ft) => {
                     let s = img_index(src, &images);
                     let img = images[s].resize(clamp(w), clamp(h), filtertype(ft));
-                    let d = put_img(dst, img, &mut images, &mut redraw);
+                    let d = put_img(dst, img, &mut images, &mut redraw, &mut show);
                     to_rhai.send(RhaiMsg::Int(d))
                         .map_err(|_| "Editimg: cannot push resize dst")?;
                 },
                 ResizeExact(src, dst, w, h, ft) => {
                     let s = img_index(src, &images);
                     let img = images[s].resize_exact(clamp(w), clamp(h), filtertype(ft));
-                    let d = put_img(dst, img, &mut images, &mut redraw);
+                    let d = put_img(dst, img, &mut images, &mut redraw, &mut show);
                     to_rhai.send(RhaiMsg::Int(d))
                         .map_err(|_| "Editimg: cannot push resize_exact dst")?;
                 },
                 ResizeFill(src, dst, w, h, ft) => {
                     let s = img_index(src, &images);
                     let img = images[s].resize_to_fill(clamp(w), clamp(h), filtertype(ft));
-                    let d = put_img(dst, img, &mut images, &mut redraw);
+                    let d = put_img(dst, img, &mut images, &mut redraw, &mut show);
                     to_rhai.send(RhaiMsg::Int(d))
                         .map_err(|_| "Editimg: cannot push resize_fill dst")?;
                 },
                 Thumbnail(src, dst, w, h) => {
                     let s = img_index(src, &images);
                     let img = images[s].thumbnail(clamp(w), clamp(h));
-                    let d = put_img(dst, img, &mut images, &mut redraw);
+                    let d = put_img(dst, img, &mut images, &mut redraw, &mut show);
                     to_rhai.send(RhaiMsg::Int(d))
                         .map_err(|_| "Editimg: cannot push thumbnail dst")?;
                 },
                 ThumbnailExact(src, dst, w, h) => {
                     let s = img_index(src, &images);
                     let img = images[s].thumbnail_exact(clamp(w), clamp(h));
-                    let d = put_img(dst, img, &mut images, &mut redraw);
+                    let d = put_img(dst, img, &mut images, &mut redraw, &mut show);
                     to_rhai.send(RhaiMsg::Int(d))
                         .map_err(|_| "Editimg: cannot push thumbnail_exact dst")?;
+                },
+                Show(img) => {
+                    let i = img_index(img, &images);
+                    let old = show;
+                    show = i;
+                    if old != show { redraw = true; }
+                    to_rhai.send(RhaiMsg::Int(show as i64))
+                        .map_err(|_| "Editimg: cannot push show dst")?;
+                },
+                ShowNext => {
+                    println!("{show}, {}", images.len());
+                    let old = show;
+                    show = (show + 1) % images.len();
+                    if old != show { redraw = true; }
+                    to_rhai.send(RhaiMsg::Int(show as i64))
+                        .map_err(|_| "Editimg: cannot push show dst")?;
+                },
+                ShowPrev => {
+                    let old = show;
+                    show = if show == 0 { images.len() - 1 } else { show - 1 };
+                    if old != show { redraw = true; }
+                    to_rhai.send(RhaiMsg::Int(show as i64))
+                        .map_err(|_| "Editimg: cannot push show dst")?;
                 },
             }
             if pop {
@@ -340,7 +364,7 @@ pub fn main() -> Result<(), String> {
         }
 
         if redraw {
-            window.set_texture(&images[0], &mut timer)?;
+            window.set_texture(&images[show], &mut timer)?;
             window.redraw_texture()?;
             drawn = true;
         }
@@ -370,7 +394,9 @@ fn clamp(v: &i64) -> u32 {
     (*v).max(0).min(u32::MAX as i64) as u32
 }
 
-fn get_img(src: &i64, dst: &i64, images: &mut Vec<DynamicImage>, redraw: &mut bool) -> usize {
+fn get_img(
+    src: &i64, dst: &i64, images: &mut Vec<DynamicImage>, redraw: &mut bool, show: &mut usize
+) -> usize {
     let s = img_index(src, images);
     let d = if src == dst {
         s
@@ -383,18 +409,20 @@ fn get_img(src: &i64, dst: &i64, images: &mut Vec<DynamicImage>, redraw: &mut bo
         images[d] = images[s].clone();
         d
     };
-    if d == 0 { *redraw = true; }
+    if d == *show { *redraw = true; }
     d
 }
 
-fn put_img(dst: &i64, img: DynamicImage, images: &mut Vec<DynamicImage>, redraw: &mut bool) -> i64 {
+fn put_img(
+    dst: &i64, img: DynamicImage, images: &mut Vec<DynamicImage>, redraw: &mut bool, show: &mut usize
+) -> i64 {
     if *dst < 0 {
         images.push(img);
         images.len() as i64 - 1
     } else {
         let d = img_index(dst, images);
         images[d] = img;
-        if d == 0 { *redraw = true; }
+        if d == *show { *redraw = true; }
         d as i64
     }
 }
