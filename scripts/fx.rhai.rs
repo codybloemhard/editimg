@@ -8,7 +8,10 @@ while true {
     else if e.key == 'i' {
         invert(0, 0);
     }
-    else if e.key == 'g' {
+    else if e.key == 'g' && !e.shift {
+        grayscale(0, 0);
+    }
+    else if e.key == 'g' && e.shift {
         blur(0, 0, 1.0);
     }
     else if e.key == 'u' {
