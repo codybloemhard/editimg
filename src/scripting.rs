@@ -34,6 +34,8 @@ pub enum HostMsg {
     Show(i64),
     ShowNext,
     ShowPrev,
+    Create(i64, i64),
+    Copy(i64, i64, i64, i64),
 }
 
 #[derive(Debug, Clone)]
@@ -188,13 +190,14 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
         th_input, th_ruv, th_rxy, th_clear, th_wh, th_crop, th_save, th_fliph, th_flipv, th_rot90,
         th_rot180, th_rot270, th_invert, th_grayscale, th_blur, th_unsharpen, th_filter3x3,
         th_adjust_contrast, th_brighten, th_huerotate, th_resize, th_resize_exact, th_resize_fill,
-        th_thumbnail, th_thumbnail_exact, th_show, th_show_next, th_show_prev
+        th_thumbnail, th_thumbnail_exact, th_show, th_show_next, th_show_prev, th_create,
+        th_copy
     );
     def_clones!( from_host,
         fh_input, fh_wh, fh_crop, fh_fliph, fh_flipv, fh_rotate90, fh_rotate180, fh_rotate270,
         fh_invert, fh_grayscale, fh_blur, fh_unsharpen, fh_filter, fh_contrast, fh_brighten,
         fh_huerotate, fh_resize, fh_resize_exact, fh_resize_fill, fh_thumbnail, fh_thumbnail_exact,
-        fh_show, fh_show_next, fh_show_prev
+        fh_show, fh_show_next, fh_show_prev, fh_create, fh_copy
     );
 
     macro_rules! recv_buf {
@@ -204,23 +207,25 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
         }
     }
 
+    use HostMsg::*;
+
     engine
         .register_fn("kill", move || {
-            to_host.send(HostMsg::Kill).expect(send_err);
+            to_host.send(Kill).expect(send_err);
         })
         .register_fn("clear_rects", move || {
-            th_clear.clone().send(HostMsg::ClearRects).expect(send_err);
+            th_clear.clone().send(ClearRects).expect(send_err);
         })
         .register_fn("draw_rect_uv", move |px: f64, py: f64, qx: f64, qy: f64| {
-            th_ruv.send(HostMsg::DrawRectUV(RectUV::new(px as f32, py as f32, qx as f32, qy as f32)))
+            th_ruv.send(DrawRectUV(RectUV::new(px as f32, py as f32, qx as f32, qy as f32)))
                 .expect(send_err);
         })
         .register_fn("draw_rect_xy", move |px: i64, py: i64, qx: i64, qy: i64| {
-            th_rxy.send(HostMsg::DrawRectXY(RectXY::new(px as i32, py as i32, qx as i32, qy as i32)))
+            th_rxy.send(DrawRectXY(RectXY::new(px as i32, py as i32, qx as i32, qy as i32)))
                 .expect(send_err);
         })
         .register_fn("get_input_event", move || -> Input {
-            th_input.send(HostMsg::GetInputEvent).expect(send_err);
+            th_input.send(GetInputEvent).expect(send_err);
             if let RhaiMsg::Input(input) = fh_input.recv().expect(receive_err) {
                 input
             } else {
@@ -228,7 +233,7 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
             }
         })
         .register_fn("get_wh", move || -> WH {
-            th_wh.send(HostMsg::GetWH).expect(send_err);
+            th_wh.send(GetWH).expect(send_err);
             let w = if let RhaiMsg::Int(i) = fh_wh.recv().expect(receive_err) {
                 i
             } else {
@@ -244,95 +249,107 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
             }
         })
         .register_fn("crop", move |s: i64, d: i64, px: i64, py: i64, qx: i64, qy: i64| -> i64 {
-            th_crop.send(HostMsg::Crop(s, d, px, py, qx, qy)).expect(send_err);
+            th_crop.send(Crop(s, d, px, py, qx, qy)).expect(send_err);
             recv_buf!(fh_crop)
         })
         .register_fn("save", move |s: i64, p: String| {
-            th_save.send(HostMsg::Save(s, p)).expect(send_err);
+            th_save.send(Save(s, p)).expect(send_err);
         })
         .register_fn("fliph", move |s: i64, d: i64| {
-            th_fliph.send(HostMsg::FlipH(s, d)).expect(send_err);
+            th_fliph.send(FlipH(s, d)).expect(send_err);
             recv_buf!(fh_fliph)
         })
         .register_fn("flipv", move |s: i64, d: i64| {
-            th_flipv.send(HostMsg::FlipV(s, d)).expect(send_err);
+            th_flipv.send(FlipV(s, d)).expect(send_err);
             recv_buf!(fh_flipv)
         })
         .register_fn("rotate90", move |s: i64, d: i64| {
-            th_rot90.send(HostMsg::Rot90(s, d)).expect(send_err);
+            th_rot90.send(Rot90(s, d)).expect(send_err);
             recv_buf!(fh_rotate90)
         })
         .register_fn("rotate180", move |s: i64, d: i64| {
-            th_rot180.send(HostMsg::Rot180(s, d)).expect(send_err);
+            th_rot180.send(Rot180(s, d)).expect(send_err);
             recv_buf!(fh_rotate180)
         })
         .register_fn("rotate270", move |s: i64, d: i64| {
-            th_rot270.send(HostMsg::Rot270(s, d)).expect(send_err);
+            th_rot270.send(Rot270(s, d)).expect(send_err);
             recv_buf!(fh_rotate270)
         })
         .register_fn("invert", move |s: i64, d: i64| {
-            th_invert.send(HostMsg::Invert(s, d)).expect(send_err);
+            th_invert.send(Invert(s, d)).expect(send_err);
             recv_buf!(fh_invert)
         })
         .register_fn("grayscale", move |s: i64, d: i64| {
-            th_grayscale.send(HostMsg::Grayscale(s, d)).expect(send_err);
+            th_grayscale.send(Grayscale(s, d)).expect(send_err);
             recv_buf!(fh_grayscale)
         })
         .register_fn("blur", move |s: i64, d: i64, sigma: f64| {
-            th_blur.send(HostMsg::Blur(s, d, sigma)).expect(send_err);
+            th_blur.send(Blur(s, d, sigma)).expect(send_err);
             recv_buf!(fh_blur)
         })
         .register_fn("unsharpen", move |s: i64, d: i64, sigma: f64, threshold: i64| {
-            th_unsharpen.send(HostMsg::Unsharpen(s, d, sigma, threshold)).expect(send_err);
+            th_unsharpen.send(Unsharpen(s, d, sigma, threshold)).expect(send_err);
             recv_buf!(fh_unsharpen)
         })
         .register_fn("filter3x3", move |s: i64, d: i64, filter: [f64; 9]| {
-            th_filter3x3.send(HostMsg::Filter3x3(s, d, filter)).expect(send_err);
+            th_filter3x3.send(Filter3x3(s, d, filter)).expect(send_err);
             recv_buf!(fh_filter)
         })
         .register_fn("adjust_contrast", move |s: i64, d: i64, c: f64| {
-            th_adjust_contrast.send(HostMsg::AdjustContrast(s, d, c)).expect(send_err);
+            th_adjust_contrast.send(AdjustContrast(s, d, c)).expect(send_err);
             recv_buf!(fh_contrast)
         })
         .register_fn("brighten", move |s: i64, d: i64, v: i64| {
-            th_brighten.send(HostMsg::Brighten(s, d, v)).expect(send_err);
+            th_brighten.send(Brighten(s, d, v)).expect(send_err);
             recv_buf!(fh_brighten)
         })
         .register_fn("huerotate", move |s: i64, d: i64, v: i64| {
-            th_huerotate.send(HostMsg::Huerotate(s, d, v)).expect(send_err);
+            th_huerotate.send(Huerotate(s, d, v)).expect(send_err);
             recv_buf!(fh_huerotate)
         })
         .register_fn("resize", move |s: i64, d: i64, w: i64, h: i64, f: String| {
-            th_resize.send(HostMsg::Resize(s, d, w, h, f)).expect(send_err);
+            th_resize.send(Resize(s, d, w, h, f)).expect(send_err);
             recv_buf!(fh_resize)
         })
         .register_fn("resize_exact", move |s: i64, d: i64, w: i64, h: i64, f: String| {
-            th_resize_exact.send(HostMsg::ResizeExact(s, d, w, h, f)).expect(send_err);
+            th_resize_exact.send(ResizeExact(s, d, w, h, f)).expect(send_err);
             recv_buf!(fh_resize_exact)
         })
         .register_fn("resize_fill", move |s: i64, d: i64, w: i64, h: i64, f: String| {
-            th_resize_fill.send(HostMsg::ResizeFill(s, d, w, h, f)).expect(send_err);
+            th_resize_fill.send(ResizeFill(s, d, w, h, f)).expect(send_err);
             recv_buf!(fh_resize_fill)
         })
         .register_fn("thumbnail", move |s: i64, d: i64, w: i64, h: i64| {
-            th_thumbnail.send(HostMsg::Thumbnail(s, d, w, h)).expect(send_err);
+            th_thumbnail.send(Thumbnail(s, d, w, h)).expect(send_err);
             recv_buf!(fh_thumbnail)
         })
         .register_fn("thumbnail_exact", move |s: i64, d: i64, w: i64, h: i64| {
-            th_thumbnail_exact.send(HostMsg::ThumbnailExact(s, d, w, h)).expect(send_err);
+            th_thumbnail_exact.send(ThumbnailExact(s, d, w, h)).expect(send_err);
             recv_buf!(fh_thumbnail_exact)
         })
         .register_fn("show", move |i: i64| {
-            th_show.send(HostMsg::Show(i)).expect(send_err);
+            th_show.send(Show(i)).expect(send_err);
             recv_buf!(fh_show)
         })
         .register_fn("show_next", move || {
-            th_show_next.send(HostMsg::ShowNext).expect(send_err);
+            th_show_next.send(ShowNext).expect(send_err);
             recv_buf!(fh_show_next)
         })
         .register_fn("show_prev", move || {
-            th_show_prev.send(HostMsg::ShowPrev).expect(send_err);
+            th_show_prev.send(ShowPrev).expect(send_err);
             recv_buf!(fh_show_prev)
+        })
+        .register_fn("create", move |w: i64, h: i64| {
+            th_create.send(Create(w, h)).expect(send_err);
+            recv_buf!(fh_create)
+        })
+        .register_fn("copy", move |s: i64, d: i64, x: i64, y: i64| {
+            th_copy.send(Copy(s, d, x, y)).expect(send_err);
+            if let RhaiMsg::Int(i) = fh_copy.recv().expect(receive_err) {
+                i == 1
+            } else {
+                quit("Editimg: rhai thread expected crop buffer but received otherwise.");
+            }
         })
     ;
 

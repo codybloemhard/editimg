@@ -1,16 +1,7 @@
-thumbnail(0, -1, 64, 64);
+let c = crop(0, -1, 200, 200, 250, 250);
+let n = create(100, 100);
+let ok = copy(c, n, 50, 50);
+show(n);
 
-while true {
-    let e = get_input_event();
-    if e.key == "termination" { break; }
-    if e.key == "return" { break; }
-    else if e.key == "left" {
-        show_prev();
-    }
-    else if e.key == "right" {
-        show_next();
-    }
-}
-
-kill();
+kill_on("return");
 

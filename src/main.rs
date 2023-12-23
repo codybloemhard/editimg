@@ -18,7 +18,9 @@ use simpleio as sio;
 use image::{
     io::Reader as IR,
     DynamicImage,
+    GenericImage,
     imageops::FilterType,
+    RgbImage,
 };
 
 use clap::Parser;
@@ -313,7 +315,6 @@ pub fn main() -> Result<(), String> {
                         .map_err(|_| "Editimg: cannot push show dst")?;
                 },
                 ShowNext => {
-                    println!("{show}, {}", images.len());
                     let old = show;
                     show = (show + 1) % images.len();
                     if old != show { redraw = true; }
@@ -326,6 +327,22 @@ pub fn main() -> Result<(), String> {
                     if old != show { redraw = true; }
                     to_rhai.send(RhaiMsg::Int(show as i64))
                         .map_err(|_| "Editimg: cannot push show dst")?;
+                },
+                Create(w, h) => {
+                    let img = RgbImage::new(clamp(w), clamp(h));
+                    images.push(DynamicImage::ImageRgb8(img));
+                    to_rhai.send(RhaiMsg::Int((images.len() - 1) as i64))
+                        .map_err(|_| "Editimg: cannot push create dst")?;
+                },
+                Copy(src, dst, x, y) => {
+                    let src = img_index(src, &images);
+                    let dst = img_index(dst, &images);
+                    let mut d = std::mem::take(&mut images[dst]);
+                    let res = d.copy_from(&images[src], clamp(x), clamp(y));
+                    images[dst] = d;
+                    if dst == show { redraw = true; }
+                    to_rhai.send(RhaiMsg::Int(if res.is_ok() { 1 } else { 0 }))
+                        .map_err(|_| "Editimg: cannot push create dst")?;
                 },
             }
             if pop {
