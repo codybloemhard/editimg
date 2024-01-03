@@ -109,6 +109,66 @@ fn select(step, square) {
     return [px, py, qx, qy];
 }
 
+fn nat_num_input() {
+    let number = "0";
+    print("natural input: 0");
+
+    while true {
+        let e = get_input_event();
+        if e.key == "termination" { break; }
+        if e.key == "num0" {
+            number += "0";
+            print("0");
+        } else if e.key == "num1" {
+            number += "1";
+            print("1");
+        } else if e.key == "num2" {
+            number += "2";
+            print("2");
+        } else if e.key == "num3" {
+            number += "3";
+            print("3");
+        } else if e.key == "num4" {
+            number += "4";
+            print("4");
+        } else if e.key == "num5" {
+            number += "5";
+            print("5");
+        } else if e.key == "num6" {
+            number += "6";
+            print("6");
+        } else if e.key == "num7" {
+            number += "7";
+            print("7");
+        } else if e.key == "num8" {
+            number += "8";
+            print("8");
+        } else if e.key == "num9" {
+            number += "9";
+            print("9");
+        } else if e.key == "backspace" && number.len() > 1{
+            number.pop();
+            print("\x08");
+            print(" ");
+            print("\x08");
+        } else if e.key == "return" {
+            break;
+        }
+    }
+
+    let parsed = parse_int(number);
+    let res = if type_of(parsed) == "i64" {
+        print(" [parsed]");
+        parsed
+    } else {
+        print(" [failed!]");
+        -1
+    };
+    print("\n");
+
+    return res;
+}
+
 fn kill_on(key) {
     while true {
         let e = get_input_event();

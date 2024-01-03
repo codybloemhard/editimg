@@ -1,7 +1,10 @@
 use rhai::Engine;
 use sdl2::keyboard::Mod;
 
-use std::sync::mpsc;
+use std::{
+    sync::mpsc,
+    io::Write,
+};
 
 #[derive(Debug, Clone)]
 pub enum HostMsg {
@@ -159,6 +162,10 @@ pub fn create_channels() -> (HostPortals, RhaiPortals) {
 pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
     let mut engine = Engine::new();
     engine.set_max_expr_depths(50, 50);
+    engine.on_print(|msg| {
+        print!("{msg}");
+        let _ = std::io::stdout().flush();
+    });
 
     let HostPortals{
         to_host, from_host,
