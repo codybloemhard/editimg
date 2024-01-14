@@ -109,13 +109,50 @@ fn select(step, square) {
     return [px, py, qx, qy];
 }
 
-fn nat_num_input() {
-    let number = "0";
-    print("natural input: 0");
+fn file_input(msg) {
+    let string = "";
+    print(msg);
 
     while true {
         let e = get_input_event();
         if e.key == "termination" { break; }
+        if e.is_click { continue; }
+        if ["num0", "num1", "num2", "num3", "num4", "num5", "num6", "num7", "num8", "num9", "num0",
+        "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r",
+        "s", "t", "u", "v", "w", "x", "y", "z"].contains(e.key) {
+            string += e.key;
+            print(e.key[e.key.len() - 1]);
+        } else if e.key == "period" {
+            string += ".";
+            print(".");
+        } else if e.key == "minus" {
+            string += "-";
+            print("-");
+        } else if e.key == "backspace" && string.len() > 0 {
+            string.pop();
+            print("\x08");
+            print(" ");
+            print("\x08");
+        } else if e.key == "return" {
+            break;
+        } else if e.key == "backslash" {
+            return "";
+        }
+    }
+
+    print("\n");
+    return string;
+}
+
+fn nat_num_input(msg) {
+    let number = "0";
+    print(msg);
+    print(number);
+
+    while true {
+        let e = get_input_event();
+        if e.key == "termination" { break; }
+        if e.is_click { continue; }
         if e.key == "num0" {
             number += "0";
             print("0");
@@ -146,7 +183,7 @@ fn nat_num_input() {
         } else if e.key == "num9" {
             number += "9";
             print("9");
-        } else if e.key == "backspace" && number.len() > 1{
+        } else if e.key == "backspace" && number.len() > 1 {
             number.pop();
             print("\x08");
             print(" ");
