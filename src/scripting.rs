@@ -37,8 +37,10 @@ pub enum HostMsg {
     Show(i64),
     ShowNext,
     ShowPrev,
+    Shown,
     Create(i64, i64),
     Copy(i64, i64, i64, i64),
+    Repeat,
 }
 
 #[derive(Debug, Clone)]
@@ -197,14 +199,14 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
         th_input, th_ruv, th_rxy, th_clear, th_wh, th_crop, th_save, th_fliph, th_flipv, th_rot90,
         th_rot180, th_rot270, th_invert, th_grayscale, th_blur, th_unsharpen, th_filter3x3,
         th_adjust_contrast, th_brighten, th_huerotate, th_resize, th_resize_exact, th_resize_fill,
-        th_thumbnail, th_thumbnail_exact, th_show, th_show_next, th_show_prev, th_create,
-        th_copy
+        th_thumbnail, th_thumbnail_exact, th_show, th_show_next, th_show_prev, th_shown, th_create,
+        th_copy, th_repeat
     );
     def_clones!( from_host,
         fh_input, fh_wh, fh_crop, fh_fliph, fh_flipv, fh_rotate90, fh_rotate180, fh_rotate270,
         fh_invert, fh_grayscale, fh_blur, fh_unsharpen, fh_filter, fh_contrast, fh_brighten,
         fh_huerotate, fh_resize, fh_resize_exact, fh_resize_fill, fh_thumbnail, fh_thumbnail_exact,
-        fh_show, fh_show_next, fh_show_prev, fh_create, fh_copy
+        fh_show, fh_show_next, fh_show_prev, fh_shown, fh_create, fh_copy
     );
 
     macro_rules! recv_buf {
@@ -346,6 +348,10 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
             th_show_prev.send(ShowPrev).expect(send_err);
             recv_buf!(fh_show_prev)
         })
+        .register_fn("shown", move || {
+            th_shown.send(Shown).expect(send_err);
+            recv_buf!(fh_shown)
+        })
         .register_fn("create", move |w: i64, h: i64| {
             th_create.send(Create(w, h)).expect(send_err);
             recv_buf!(fh_create)
@@ -357,6 +363,9 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
             } else {
                 quit("Editimg: rhai thread expected crop buffer but received otherwise.");
             }
+        })
+        .register_fn("repeat", move || {
+            th_repeat.send(Repeat).expect(send_err);
         })
     ;
 
