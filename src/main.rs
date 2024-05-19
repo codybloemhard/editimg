@@ -201,7 +201,10 @@ pub fn main() -> Result<(), String> {
                 },
                 Save(source, path) => {
                     let s = img_index(source, &images);
-                    images[s].save(path).map_err(|e| e.to_string())?;
+                    match images[s].save(path) {
+                        Ok(_) => println!("saved!"),
+                        Err(e) => println!("Failed: {:#?}", e),
+                    }
                 },
                 FlipH(src, dst) => {
                     img_action(src, dst, &mut images, &mut redraw, show, &mut to_rhai,
@@ -440,7 +443,7 @@ fn put_img(
     }
 }
 
-fn img_index(i: &i64, images: &Vec<DynamicImage>) -> usize {
+fn img_index(i: &i64, images: &[DynamicImage]) -> usize {
     ((*i).max(0) as usize).min(images.len() - 1)
 }
 
