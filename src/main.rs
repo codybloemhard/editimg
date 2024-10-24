@@ -16,7 +16,7 @@ use sdl2::{
 use simpleio as sio;
 
 use image::{
-    io::Reader as IR,
+    ImageReader as IR,
     DynamicImage,
     GenericImage,
     imageops::FilterType,

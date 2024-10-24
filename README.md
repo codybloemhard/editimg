@@ -108,6 +108,11 @@ Datatypes:
   - w: i64, the width of the current image buffer in pixels
   - h: i64, the height of the current image buffer in pixels
 
+## Issues
+
+- Keyboard input completely breaks when using latest sdl2 0.37.0?
+- Cropping a selection of size 0 crashes the application
+
 ## License
 
 ```
