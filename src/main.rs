@@ -194,10 +194,15 @@ pub fn main() -> Result<(), String> {
                 },
                 Crop(src, dst, px, py, qx, qy) => {
                     let s = img_index(src, &images);
-                    let (px, py, qx, qy) = img_crop(*px, *py, *qx, *qy);
-                    let img = images[s].crop(px, py, qx - px, qy - py);
-                    let d = put_img(dst, img, &mut images, &mut redraw, show);
-                    send_int(&mut to_rhai, d, "Editimg: cannot push crop dst", !repeated)?;
+                    if px == qx || py == qy {
+                        println!("Select at an area of least 1x1 pixels!");
+                        send_int(&mut to_rhai, s as i64, "Editimg: cannot push crop src", !repeated)?;
+                    } else {
+                        let (px, py, qx, qy) = img_crop(*px, *py, *qx, *qy);
+                        let img = images[s].crop(px, py, qx - px, qy - py);
+                        let d = put_img(dst, img, &mut images, &mut redraw, show);
+                        send_int(&mut to_rhai, d, "Editimg: cannot push crop dst", !repeated)?;
+                    }
                 },
                 Save(source, path) => {
                     let s = img_index(source, &images);
