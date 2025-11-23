@@ -175,8 +175,10 @@ pub fn main() -> Result<(), String> {
                     }
                     set_last = false;
                 },
-                GetWH => {
-                    let (w, h) = window.get_wh();
+                GetWH(src) => {
+                    let i = img_index(src, &images);
+                    let w = images[i].width();
+                    let h = images[i].height();
                     to_rhai.send(RhaiMsg::Int(w as i64)).map_err(|_| "Editimg: cannot push width")?;
                     to_rhai.send(RhaiMsg::Int(h as i64)).map_err(|_| "Editimg: cannot push height")?;
                     set_last = false;

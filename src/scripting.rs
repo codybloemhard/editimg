@@ -10,7 +10,7 @@ use std::{
 pub enum HostMsg {
     Kill,
     GetInputEvent,
-    GetWH,
+    GetWH(i64),
     ClearRects,
     DrawRectUV(RectUV),
     DrawRectXY(RectXY),
@@ -241,8 +241,8 @@ pub fn construct_rhai_engine(host_portals: HostPortals) -> Engine {
                 quit("Editimg: rhai thread expected input but received otherwise.");
             }
         })
-        .register_fn("get_wh", move || -> WH {
-            th_wh.send(GetWH).expect(send_err);
+        .register_fn("get_wh", move |s: i64| -> WH {
+            th_wh.send(GetWH(s)).expect(send_err);
             let w = if let RhaiMsg::Int(i) = fh_wh.recv().expect(receive_err) {
                 i
             } else {

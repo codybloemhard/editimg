@@ -56,7 +56,7 @@ Scripts can be written to design workflows that can be launched.
 General functions:
 - kill: kills session
 - get_input_event: returns Input
-- get_wh: returns WH
+- get_wh(src: i64): returns width and height of buffer
 - clear_rects: clears all rectangles on the screen
 - draw_rect_uv(px: f64, py: f64, qx: f64, qy: f64): draw rectangle with UV coordinates
 - draw_rect_xy(px: f64, py: f64, qx: f64, qy: f64): draw rectangle with pixel coordinates

@@ -1,5 +1,5 @@
 fn select(step, square) {
-    let wh = get_wh();
+    let wh = get_wh(shown());
     let w = wh.w;
     let h = wh.h;
     let px = w / 2;
