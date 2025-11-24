@@ -197,6 +197,10 @@ pub fn main() -> Result<(), String> {
                     to_rhai.send(RhaiMsg::Int(h as i64)).map_err(|_| "Editimg: cannot push height")?;
                     set_last = false;
                 },
+                GetBuffersLen => {
+                    to_rhai.send(RhaiMsg::Int(images.len() as i64))
+                        .map_err(|_| "Editimg: cannot push buffers length")?;
+                },
                 ClearRects => {
                     window.clear_rects();
                     window.redraw_texture()?;

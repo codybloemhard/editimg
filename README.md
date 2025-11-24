@@ -57,6 +57,7 @@ General functions:
 - kill: kills session
 - get_input_event: returns Input
 - get_wh(src: i64): returns width and height of buffer
+- get_buffers_len: returns the amount of buffers that exist
 - clear_rects: clears all rectangles on the screen
 - draw_rect_uv(px: f64, py: f64, qx: f64, qy: f64): draw rectangle with UV coordinates
 - draw_rect_xy(px: f64, py: f64, qx: f64, qy: f64): draw rectangle with pixel coordinates
@@ -112,11 +113,12 @@ Datatypes:
 
 - Keyboard input completely breaks when using latest sdl2 0.37.0?
 - Cropping a selection of size 0 crashes the application
+- Running it not in release mode crashes it (sdl again)
 
 ## License
 
 ```
-Copyright (C) 2024 Cody Bloemhard
+Copyright (C) 2025 Cody Bloemhard
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
