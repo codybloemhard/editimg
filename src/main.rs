@@ -39,8 +39,9 @@ use rhai::{
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
-    input: PathBuf,
     command: String,
+    #[clap(num_args = 1..)]
+    input: Option<Vec<PathBuf>>,
 }
 
 pub fn main() -> Result<(), String> {
@@ -105,18 +106,31 @@ pub fn main() -> Result<(), String> {
     let mut timer = Timer::new();
     let (mut window, mut event_pump) = EIWindow::create(&timer)?;
 
-    let img = IR::open(args.input)
-        .map_err(|e| e.to_string())?
-        .decode()
-        .map_err(|e| e.to_string())?;
-    println!("Image: {:?}ms", timer.elapsed());
-    window.set_texture(&img, &mut timer)?;
+    let imgs = if let Some(imgs) = args.input {
+        if imgs.is_empty() {
+            return Err("Editimg: input images list is empty".to_string());
+        }
+        imgs
+    } else {
+        return Err("Editimg: could not parse input images".to_string());
+    };
+
+    let mut images = Vec::new();
+    for img in imgs {
+        let image = IR::open(img)
+            .map_err(|e| e.to_string())?
+            .decode()
+            .map_err(|e| e.to_string())?;
+        println!("Image: {:?}ms", timer.elapsed());
+        images.push(image);
+    }
+
+    window.set_texture(&images[0], &mut timer)?;
 
     let mut inputs = VecDeque::new();
     let mut polls = VecDeque::new();
     let mut rects_uv = Vec::new();
     let mut rects_xy = Vec::new();
-    let mut images = vec![img];
     let mut show = 0;
     let mut last: Option<HostMsg> = None;
     let mut repeated = false;

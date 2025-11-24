@@ -64,10 +64,6 @@ impl EIWindow{
         ))
     }
 
-    pub fn get_wh(&self) -> (u32, u32) {
-        (self.texw, self.texh)
-    }
-
     pub fn set_texture(&mut self, img: &DynamicImage, timer: &mut Timer) -> Result<(), String>
     {
         if self.texture.is_some() {

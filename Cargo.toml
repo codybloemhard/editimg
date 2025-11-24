@@ -6,9 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-image = "0.25.4"
+image = "0.25.9"
 sdl2 = { version = "0.36.0", features = ["unsafe_textures"] }
-rhai = "1.19.0"
+rhai = "1.23.6"
 simpleio = "0.2.3"
-clap = { version = "4.5.20", features = ["derive"] }
+clap = { version = "4.5.53", features = ["derive"] }
 spmc = "0.3.0"
