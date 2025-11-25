@@ -457,7 +457,7 @@ fn clamp(v: &i64) -> u32 {
 fn put_img(
     dst: &i64, img: DynamicImage, images: &mut Vec<DynamicImage>, redraw: &mut bool, show: usize
 ) -> i64 {
-    if *dst < 0 {
+    if *dst < 0 || *dst == images.len() as i64 {
         images.push(img);
         images.len() as i64 - 1
     } else {
